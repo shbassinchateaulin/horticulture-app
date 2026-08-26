@@ -1,0 +1,10 @@
+{
+  "name": "Société d’Horticulture — Gestion interne",
+  "short_name": "Horticulture",
+  "description": "Application interne de gestion de la Société d’Horticulture et d’Art Floral du Bassin de Châteaulin.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3F1EB",
+  "theme_color": "#557FA0"
+}
