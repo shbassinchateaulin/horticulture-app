@@ -7,12 +7,5 @@
   "display": "standalone",
   "background_color": "#F6F7F5",
   "theme_color": "#0D3C2C",
-  "icons": [
-    {
-      "src": "logo-admin.jpg",
-      "sizes": "256x256",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    }
-  ]
+  "icons": [{"src":"logo-admin.webp","sizes":"384x384","type":"image/webp","purpose":"any"}]
 }
