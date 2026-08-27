@@ -20,11 +20,7 @@ async function pull(initial=false){
         sessionStorage.setItem('horticulture-shared-users-loaded','1');
         location.reload();
       }
-    }else if(changed){
-      /* superadmin-v2 keeps its own in-memory users array, so a reload is required
-         to make a remote status/permission/delete change visible immediately. */
-      location.reload();
-    }
+    }else if(changed){ location.reload(); }
     return users;
   }catch(e){console.warn('Shared users pull failed',e);return null}
 }
@@ -46,5 +42,11 @@ pull(true);
 setInterval(()=>pull(false),5000);
 window.addEventListener('focus',()=>pull(false));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false)});
-window.HorticultureSharedUsers={api:API,pull};
+window.HorticultureSharedUsers={
+  api:API,
+  pull,
+  async createUser(user){const r=await request({action:'createUser',user});await pull(false);return r},
+  async updateUser(user){const r=await request({action:'updateUser',user});await pull(false);return r},
+  async deleteUser(id){const r=await request({action:'deleteUser',id});await pull(false);return r}
+};
 })();
