@@ -1,16 +1,20 @@
 (()=>{
-const USERS='horticulture-admin-users-v2',SK='horticulture-admin-session-v1',PK='horticulture-admin-persistent-session-v1';
-const RULES={communication:['Publier','Actualités','Nouvelle publication'],sorties:['Sorties','Inscriptions'],adherents:['Adhérents'],comptabilite:['Comptabilité','Trésorerie'],suggestions:['Suggestions'],acces:['Gestion des accès']};
-function users(){try{return JSON.parse(localStorage.getItem(USERS)||'[]')}catch{return[]}}
-function sess(){for(const raw of [localStorage.getItem(PK),sessionStorage.getItem(SK)])try{const s=JSON.parse(raw||'null');if(s)return s}catch{}return null}
-function val(o,...keys){for(const k of keys)if(o?.[k]!=null&&String(o[k]).trim())return String(o[k]).trim();return''}
-function me(){const s=sess();if(!s)return null;const list=users();const id=val(s,'id','userId','user_id'),un=val(s,'username','user','login');return (id&&list.find(u=>String(u.id)===id))||(un&&list.find(u=>val(u,'username','user','login')===un))||s}
-function isSuper(u){return val(u,'role').toLowerCase()==='super admin'||val(u,'username')==='superadmin'}
-function perms(u){const p=u?.permissions??u?.permission??u?.permissionsList??[];if(Array.isArray(p))return p;if(typeof p==='string')return p.split(/[,;|]/).map(x=>x.trim()).filter(Boolean);return[]}
-function perm(el){if(el.dataset?.permission)return el.dataset.permission;const t=(el.textContent||'').trim();for(const[p,words]of Object.entries(RULES))if(words.some(w=>t.includes(w)))return p;return null}
-function apply(){const u=me();if(!u)return;const allowed=new Set(perms(u));document.querySelectorAll('.dashTile,.quickBtn,.dlist button,[data-permission]').forEach(el=>{const p=perm(el);if(!p)return;el.style.setProperty('display',isSuper(u)||allowed.has(p)?'':'none','important')});
- const first=val(u,'firstName','firstname','first_name','First Name','FIRST NAME','FIRST_NAME');const last=val(u,'lastName','lastname','last_name','Last Name','LAST NAME','LAST_NAME');const fn=val(u,'function','fonction','Function','Fonction','FUNCTION')||val(u,'role')||'Compte';const full=[first,last].filter(Boolean).join(' ');const initials=((first[0]||'')+(last[0]||'')).toUpperCase()||'U';
- document.querySelectorAll('#home .name').forEach(el=>{if(first)el.textContent=first});document.querySelectorAll('#home .chip').forEach(el=>{el.textContent=isSuper(u)?'Super Admin':fn});document.querySelectorAll('.admProfile span').forEach(el=>{if(full)el.textContent=full});document.querySelectorAll('.admAvatar').forEach(el=>{el.innerHTML='';el.textContent=initials;el.style.fontWeight='800';el.style.fontSize='13px';el.style.padding='0'});
+const K='horticulture-admin-users-v2',SK='horticulture-admin-session-v1',PK='horticulture-admin-persistent-session-v1';
+const RULES={communication:['Publier','Actualités','Nouvelle publication'],sorties:['Sorties','Inscriptions','Nouvelle sortie'],adherents:['Adhérents','Ajouter un adhérent'],comptabilite:['Comptabilité','Trésorerie'],suggestions:['Suggestions','Voir les suggestions'],acces:['Gestion des accès']};
+function list(){try{return JSON.parse(localStorage.getItem(K)||'[]')}catch{return[]}}
+function session(){for(const raw of [localStorage.getItem(PK),sessionStorage.getItem(SK)])try{const s=JSON.parse(raw||'null');if(s?.id||s?.username)return s}catch{}return null}
+function me(){const s=session();if(!s)return null;return list().find(u=>String(u.id)===String(s.id))||list().find(u=>u.username===s.username)||s}
+function get(u,...ks){for(const k of ks){const v=u?.[k];if(v!=null&&String(v).trim())return String(v).trim()}return''}
+function superAdmin(u){return get(u,'role')==='Super Admin'||get(u,'username')==='superadmin'}
+function permissions(u){let p=u?.permissions||[];if(typeof p==='string')p=p.split(/[,;|]/);return new Set(p.map(x=>String(x).trim()))}
+function pFor(el){const d=el.dataset?.permission;if(d)return d;const t=(el.textContent||'').trim();for(const[p,ws]of Object.entries(RULES))if(ws.some(w=>t.includes(w)))return p;return''}
+function setText(sel,text){if(!text)return;document.querySelectorAll(sel).forEach(e=>e.textContent=text)}
+function apply(){const u=me();if(!u)return;const ps=permissions(u),sa=superAdmin(u);
+ document.querySelectorAll('[data-permission],.dashTile,.quickBtn').forEach(el=>{const p=pFor(el);if(p)el.style.setProperty('display',sa||ps.has(p)?'':'none','important')});
+ const first=get(u,'firstName','firstname','first_name');const last=get(u,'lastName','lastname','last_name');const fn=get(u,'function','fonction')||get(u,'role')||'Compte';const full=[first,last].filter(Boolean).join(' ');const ini=((first[0]||'')+(last[0]||'')).toUpperCase()||'U';
+ setText('#name,#home .name,.welcomeName,.admWelcomeName',first||'Utilisateur');setText('#role,#home .chip,.welcomeRole,.admWelcomeRole',sa?'Super Admin':fn);setText('#dname',full||first||'Utilisateur');setText('#drole',sa?'Super Admin':fn);
+ const prof=[...document.querySelectorAll('.admProfile')];prof.forEach(box=>{const spans=box.querySelectorAll('span,b');if(spans.length)spans[spans.length-1].textContent=full||first||'Utilisateur';const av=box.querySelector('.admAvatar,img');if(av&&!av.matches('img'))av.textContent=ini});
+ document.querySelectorAll('.admAvatar').forEach(a=>{a.textContent=ini;a.style.fontWeight='800'});
 }
-window.addEventListener('horticulture-users-synced',apply);window.addEventListener('pageshow',apply);document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply()});new MutationObserver(()=>apply()).observe(document.documentElement,{childList:true,subtree:true});setTimeout(apply,0);setTimeout(apply,300);setTimeout(apply,1200);
+window.HorticultureAccountUI={apply};window.addEventListener('horticulture-users-synced',apply);window.addEventListener('pageshow',apply);document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply()});setInterval(apply,1000);setTimeout(apply,0);setTimeout(apply,250);setTimeout(apply,1000);
 })();
