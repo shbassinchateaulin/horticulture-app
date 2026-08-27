@@ -1,49 +1,5 @@
-const CACHE='horticulture-admin-v21';
+const CACHE='horticulture-admin-v22';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./logo-admin-transparent.png','./app-icon-botanical-v4.png','./superadmin-v2.css','./superadmin-v2.js','./dashboard-v1.js'];
-
-self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate',e=>{
-  e.waitUntil((async()=>{
-    const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
-    await self.clients.claim();
-    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    for(const client of clients){
-      try{await client.navigate(client.url)}catch{}
-    }
-  })());
-});
-
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  const u=new URL(e.request.url);
-  const isNav=e.request.mode==='navigate'||u.pathname.endsWith('/index.html')||u.pathname.endsWith('/horticulture-app/');
-
-  if(isNav){
-    e.respondWith(
-      fetch(e.request,{cache:'no-store'}).then(async r=>{
-        const text=await r.text();
-        const injected=text.includes('dashboard-v1.js')?text:text.replace('</body>','<script src="./dashboard-v1.js?v=2"></script></body>');
-        return new Response(injected,{status:r.status,statusText:r.statusText,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
-      }).catch(()=>caches.match('./index.html').then(async r=>{
-        if(!r)return r;
-        const text=await r.text();
-        const injected=text.includes('dashboard-v1.js')?text:text.replace('</body>','<script src="./dashboard-v1.js?v=2"></script></body>');
-        return new Response(injected,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
-      }))
-    );
-    return;
-  }
-
-  e.respondWith(
-    fetch(e.request,{cache:'no-store'}).then(r=>{
-      const copy=r.clone();
-      caches.open(CACHE).then(c=>c.put(e.request,copy));
-      return r;
-    }).catch(()=>caches.match(e.request))
-  );
-});
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim();const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});for(const client of clients){try{await client.navigate(client.url)}catch{}}})());});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);const isNav=e.request.mode==='navigate'||u.pathname.endsWith('/index.html')||u.pathname.endsWith('/horticulture-app/');if(isNav){e.respondWith(fetch(e.request,{cache:'no-store'}).then(async r=>{const text=await r.text();const injected=text.includes('dashboard-v1.js')?text:text.replace('</body>','<script src="./dashboard-v1.js?v=3"></script></body>');return new Response(injected,{status:r.status,statusText:r.statusText,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}).catch(()=>caches.match('./index.html').then(async r=>{if(!r)return r;const text=await r.text();const injected=text.includes('dashboard-v1.js')?text:text.replace('</body>','<script src="./dashboard-v1.js?v=3"></script></body>');return new Response(injected,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})})));return;}e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)));});
