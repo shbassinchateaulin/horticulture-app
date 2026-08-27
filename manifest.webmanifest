@@ -9,8 +9,8 @@
   "theme_color": "#0D3C2C",
   "icons": [
     {
-      "src": "logo-admin.png",
-      "sizes": "128x128",
+      "src": "logo-admin-transparent.png",
+      "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     }
