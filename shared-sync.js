@@ -1,8 +1,10 @@
 (()=>{
 const USERS_KEY='horticulture-admin-users-v2';
 const API_KEY='horticulture-admin-shared-api-url';
-const DEFAULT_API='https://script.google.com/macros/s/AKfycbyZ8VWD2lfOrQmcsjMoo9ADdihKklmEPd6gQ8KbK6B2nd0UdD8v03KK0kaRfkFaD7A/exec';
-const api=localStorage.getItem(API_KEY)||window.HORTICULTURE_SHARED_API_URL||DEFAULT_API;
+const DEFAULT_API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
+/* Always use the deployed shared backend. An old URL saved on one device must not override it. */
+const api=window.HORTICULTURE_SHARED_API_URL||DEFAULT_API;
+if(localStorage.getItem(API_KEY)!==DEFAULT_API)localStorage.setItem(API_KEY,DEFAULT_API);
 let syncing=false;
 const nativeSet=Storage.prototype.setItem;
 async function pushUsers(raw){
@@ -23,6 +25,7 @@ async function pull(){
     const local=localStorage.getItem(USERS_KEY)||'[]';
     if(remote!==local){
       syncing=true;nativeSet.call(localStorage,USERS_KEY,remote);syncing=false;
+      window.dispatchEvent(new CustomEvent('horticulture-users-synced',{detail:{users:j.users}}));
       if(sessionStorage.getItem('horticulture-shared-users-loaded')!=='1'){
         sessionStorage.setItem('horticulture-shared-users-loaded','1');
         location.reload();
@@ -34,5 +37,5 @@ pull();
 setInterval(pull,10000);
 window.addEventListener('focus',pull);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
-window.HorticultureSharedUsers={api,pull,setApi(url){localStorage.setItem(API_KEY,url);location.reload()},clearApi(){localStorage.removeItem(API_KEY);location.reload()}};
+window.HorticultureSharedUsers={api,pull,setApi(){},clearApi(){}};
 })();
