@@ -1,0 +1,42 @@
+name: Apply Super Admin v2
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-superadmin-v2.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          if 'superadmin-v2.css' not in s:
+              s=s.replace('</head>', '<link rel="stylesheet" href="superadmin-v2.css?v=2"></head>')
+          if 'superadmin-v2.js' not in s:
+              s=s.replace('</body>', '<script src="superadmin-v2.js?v=2"></script></body>')
+          p.write_text(s)
+          PY
+      - name: Bump service worker cache
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace("horticulture-admin-v16","horticulture-admin-v17")
+          if "'./superadmin-v2.css'" not in s:
+              s=s.replace("'./app-icon-botanical-v4.png'", "'./app-icon-botanical-v4.png','./superadmin-v2.css','./superadmin-v2.js'")
+          p.write_text(s)
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html sw.js
+          git diff --cached --quiet || git commit -m 'Apply Super Admin access management v2'
+          git push
