@@ -1,4 +1,4 @@
-name: Fix PWA logo
+name: Apply botanical login panel
 
 on:
   push:
@@ -9,25 +9,50 @@ permissions:
   contents: write
 
 jobs:
-  fix-logo:
+  apply-style:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Replace broken logo references
+      - name: Inject photographic botanical panel
         run: |
-          sed -i 's/logo-admin\.jpg/logo-admin.png/g' index.html
-          sed -i 's/logo-admin\.webp/logo-admin.png/g' index.html
-          sed -i 's/logo-admin\.jpg/logo-admin.png/g' manifest.webmanifest || true
-          sed -i 's/logo-admin\.webp/logo-admin.png/g' manifest.webmanifest || true
-          sed -i 's/logo-admin\.jpg/logo-admin.png/g' sw.js || true
-          sed -i 's/logo-admin\.webp/logo-admin.png/g' sw.js || true
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          html = p.read_text(encoding='utf-8')
+          marker = '</head>'
+          css = '''<style id="botanical-photo-v1">
+          @media(min-width:900px){
+            .brand{
+              display:flex !important;
+              position:relative !important;
+              overflow:hidden !important;
+              background:
+                linear-gradient(180deg,rgba(3,37,30,.96) 0%,rgba(3,42,32,.90) 32%,rgba(3,45,32,.48) 59%,rgba(2,31,23,.18) 100%),
+                url("https://images.unsplash.com/photo-1779231570511-33b918d38d01?auto=format&fit=crop&w=1400&q=88") center bottom/cover no-repeat !important;
+              color:white !important;
+              padding:64px 52px !important;
+              flex-direction:column !important;
+            }
+            .brand:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,20,15,.10),transparent 70%);pointer-events:none;z-index:1}
+            .brandText{position:relative !important;z-index:3 !important;margin-top:70px !important;max-width:360px}
+            .brand h2{font-size:36px !important;line-height:1.12 !important;margin:0 0 14px !important;font-weight:850 !important;letter-spacing:-.025em !important;text-shadow:0 2px 10px rgba(0,0,0,.24)}
+            .brand h3{font-size:17px !important;color:#8bd49f !important;margin:0 !important;font-weight:800 !important;letter-spacing:.025em !important}
+            .brandLine{width:50px !important;height:2px !important;background:#84ca99 !important;margin:32px 0 !important}
+            .brand p{margin:0 !important;max-width:280px !important;line-height:1.6 !important;color:#edf5f1 !important;font-size:15px !important;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+            .plant{display:none !important}
+          }
+          </style>'''
+          if 'botanical-photo-v1' not in html:
+              html = html.replace(marker, css + marker)
+          p.write_text(html, encoding='utf-8')
+          PY
 
-      - name: Commit fix
+      - name: Commit style
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html manifest.webmanifest sw.js
-          git commit -m "Use valid PNG administration logo everywhere" || exit 0
+          git add index.html
+          git commit -m "Use real botanical photo on desktop login panel" || exit 0
           git push
