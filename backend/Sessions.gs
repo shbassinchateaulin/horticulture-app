@@ -26,16 +26,23 @@ function getSessionState_(userId){
   return{ok:true,generation:generation};
 }
 
+// Invalide toutes les sessions déjà ouvertes de CE compte uniquement.
+// Utilisé après un changement de mot de passe et par le bouton de déconnexion à distance.
+function rotateSessionGeneration_(userId){
+  const u=sessionUser_(userId);
+  if(!u)return null;
+  const next=Utilities.getUuid();
+  PropertiesService.getScriptProperties().setProperty(SESSION_PROP_PREFIX+String(userId),next);
+  return next;
+}
+
 function disconnectOtherSessions_(userId,currentGeneration){
   const u=sessionUser_(userId);
   if(!u)return{ok:false,error:'Utilisateur introuvable ou inactif'};
-  const props=PropertiesService.getScriptProperties();
-  const key=SESSION_PROP_PREFIX+String(userId);
   const serverGeneration=sessionGeneration_(userId);
   if(currentGeneration&&String(currentGeneration)!==String(serverGeneration)){
     return{ok:false,error:'Cette session n’est plus valide.',sessionExpired:true,generation:serverGeneration};
   }
-  const next=Utilities.getUuid();
-  props.setProperty(key,next);
+  const next=rotateSessionGeneration_(userId);
   return{ok:true,generation:next,message:'Tous les autres appareils ont été déconnectés.'};
 }
