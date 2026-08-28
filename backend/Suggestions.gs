@@ -1,142 +1,175 @@
-// Suggestions.gs — backend du Google Sheet Suggestions
-// À ajouter dans le projet Apps Script LIÉ AU GOOGLE SHEET DES SUGGESTIONS.
-// Ce fichier ne dépend pas directement du projet Apps Script Administration.
+// Suggestions.gs — API d'administration du tableau "Tableau suggestion"
+// IMPORTANT : ce fichier est indépendant du Code.gs/Formulaire.html du site public.
+// Il ne modifie pas le circuit formulaire -> Google Sheet -> mail existant.
 
-const SUGGESTIONS_SPREADSHEET_ID='1FBSKEkT6eyzDLGWw8G-AOZagZMKED15LLFUKdvm6Jqs';
-const ADMIN_API_URL='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
-const SUGGESTION_STATUS_HEADER='Statut application';
-const SUGGESTION_ID_HEADER='ID application';
-const SUGGESTION_UPDATED_HEADER='Mis à jour application';
-const SUGGESTION_SOURCE_HEADER='Source application';
-const SUGGESTION_LAST_ROW_PROP='suggestions:lastSeenRow:';
+const SUGGESTIONS_SPREADSHEET_ID = '1FBSKEkT6eyzDLGWw8G-AOZagZMKED15LLFUKdvm6Jqs';
+const SUGGESTIONS_SHEET_NAME = 'Tableau suggestion';
+const ADMIN_API_URL = 'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
+const SUGGESTIONS_LAST_ROW_PROP = 'suggestionsAdmin:lastSeenRow';
+const SUGGESTIONS_STATUSES = ['Pas commencé','En cours','Bloqué','Terminé','Non retenu'];
 
-function suggestionsDb_(){
-  try{return SpreadsheetApp.getActiveSpreadsheet()}catch(e){return SpreadsheetApp.openById(SUGGESTIONS_SPREADSHEET_ID)}
-}
-function normalizeHeader_(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
-function suggestionTextColumn_(headers){
-  const exact=['suggestion','suggestions','votre suggestion','proposition','propositions','idee','idée','message'];
-  let i=headers.findIndex(h=>exact.includes(normalizeHeader_(h)));
-  if(i>=0)return i;
-  return headers.findIndex(h=>{const n=normalizeHeader_(h);return n.includes('suggest')||n.includes('proposition')||n.includes('idee')});
-}
-function suggestionsSheet_(){
-  const ss=suggestionsDb_(),sheets=ss.getSheets();
-  for(const sh of sheets){
-    if(sh.getLastColumn()<1)continue;
-    const headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
-    if(suggestionTextColumn_(headers)>=0)return ensureSuggestionColumns_(sh);
-  }
-  throw new Error('Aucun onglet contenant une colonne Suggestion / Proposition / Idée n’a été trouvé.');
-}
-function ensureSuggestionColumns_(sh){
-  let headers=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0];
-  [SUGGESTION_STATUS_HEADER,SUGGESTION_ID_HEADER,SUGGESTION_UPDATED_HEADER,SUGGESTION_SOURCE_HEADER].forEach(h=>{
-    if(!headers.some(x=>normalizeHeader_(x)===normalizeHeader_(h))){
-      sh.getRange(1,sh.getLastColumn()+1).setValue(h);
-      headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
-    }
-  });
+function suggestionsAdminSheet_() {
+  const ss = SpreadsheetApp.openById(SUGGESTIONS_SPREADSHEET_ID);
+  const sh = ss.getSheetByName(SUGGESTIONS_SHEET_NAME);
+  if (!sh) throw new Error('Onglet "Tableau suggestion" introuvable.');
   return sh;
 }
-function suggestionCols_(sh){
-  const h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],norm=h.map(normalizeHeader_);
-  const find=(names)=>{for(const name of names){const i=norm.findIndex(x=>x===normalizeHeader_(name)||x.includes(normalizeHeader_(name)));if(i>=0)return i}return-1};
-  return{headers:h,text:suggestionTextColumn_(h),status:find([SUGGESTION_STATUS_HEADER]),id:find([SUGGESTION_ID_HEADER]),updated:find([SUGGESTION_UPDATED_HEADER]),source:find([SUGGESTION_SOURCE_HEADER]),date:find(['horodateur','timestamp','date','date de soumission']),name:find(['nom et prénom','nom','prenom','prénom']),email:find(['adresse e-mail','adresse email','e-mail','email']),category:find(['catégorie','categorie','type'])};
-}
-function ensureSuggestionId_(sh,row,cols){
-  let id=String(sh.getRange(row,cols.id+1).getValue()||'').trim();
-  if(!id){id=Utilities.getUuid();sh.getRange(row,cols.id+1).setValue(id)}
-  return id;
-}
-function suggestionRowObject_(sh,row,cols){
-  const raw=sh.getRange(row,1,1,sh.getLastColumn()).getDisplayValues()[0],value=i=>i>=0?String(raw[i]||'').trim():'';
-  return{id:ensureSuggestionId_(sh,row,cols),row:row,text:value(cols.text),status:value(cols.status)||'Nouvelle',date:value(cols.date),name:value(cols.name),email:value(cols.email),category:value(cols.category),source:value(cols.source)||'Site',updatedAt:value(cols.updated)};
-}
-function listSuggestions_(){
-  const sh=suggestionsSheet_(),cols=suggestionCols_(sh),last=sh.getLastRow();
-  syncNewSuggestions_(sh,cols,last);
-  if(last<2)return{ok:true,suggestions:[],sheetName:sh.getName()};
-  const out=[];
-  for(let row=2;row<=last;row++){
-    const text=String(sh.getRange(row,cols.text+1).getDisplayValue()||'').trim();
-    if(text)out.push(suggestionRowObject_(sh,row,cols));
-  }
-  out.reverse();
-  return{ok:true,suggestions:out,sheetName:sh.getName()};
-}
-function syncNewSuggestions_(sh,cols,lastRow){
-  const props=PropertiesService.getScriptProperties(),key=SUGGESTION_LAST_ROW_PROP+sh.getSheetId(),stored=props.getProperty(key);
-  if(stored===null){props.setProperty(key,String(lastRow));return}
-  const from=Math.max(2,Number(stored||1)+1);
-  if(lastRow<from){props.setProperty(key,String(lastRow));return}
-  for(let row=from;row<=lastRow;row++){
-    const text=String(sh.getRange(row,cols.text+1).getDisplayValue()||'').trim();
-    if(!text)continue;
-    const s=suggestionRowObject_(sh,row,cols);
-    if(cols.status>=0&&!String(sh.getRange(row,cols.status+1).getValue()||'').trim())sh.getRange(row,cols.status+1).setValue('Nouvelle');
-    if(cols.source>=0&&!String(sh.getRange(row,cols.source+1).getValue()||'').trim())sh.getRange(row,cols.source+1).setValue('Site');
-    notifyAdministrationSuggestion_(s);
-    sendSuggestionMail_(s);
-  }
-  props.setProperty(key,String(lastRow));
-}
-function notifyAdministrationSuggestion_(s){
-  const payload={action:'createNotification',notification:{type:'suggestion',title:'Nouvelle suggestion',message:String(s.text||''),targetPermissions:['suggestions'],data:{suggestionId:String(s.id||''),row:Number(s.row||0),source:'Site'}}};
-  try{
-    const r=UrlFetchApp.fetch(ADMIN_API_URL,{method:'post',contentType:'text/plain;charset=utf-8',payload:JSON.stringify(payload),muteHttpExceptions:true,followRedirects:true});
-    const code=r.getResponseCode();
-    if(code<200||code>=300)console.warn('Notification Administration HTTP '+code+': '+r.getContentText());
-  }catch(e){console.warn('Notification Administration impossible: '+e)}
-}
-function sendSuggestionMail_(s){
-  const props=PropertiesService.getScriptProperties();
-  let to=String(props.getProperty('SUGGESTIONS_EMAIL')||'').trim();
-  if(!to){try{to=String(Session.getEffectiveUser().getEmail()||'').trim()}catch(e){}}
-  if(!to)return;
-  const who=s.name?(' par '+s.name):'';
-  MailApp.sendEmail({to:to,subject:'Nouvelle suggestion reçue',body:'Une nouvelle suggestion a été reçue'+who+'.\n\n'+s.text+'\n\nConsultez-la dans l’application d’administration.',name:"Société d’Horticulture du Bassin de Châteaulin"});
-}
-function addSuggestion_(o){
-  o=o||{};const text=String(o.text||'').trim();if(!text)return{ok:false,error:'La proposition est vide.'};
-  const sh=suggestionsSheet_(),cols=suggestionCols_(sh),row=sh.getLastRow()+1,values=new Array(sh.getLastColumn()).fill(''),id=Utilities.getUuid(),now=new Date().toISOString();
-  values[cols.text]=text;
-  if(cols.status>=0)values[cols.status]=String(o.status||'Nouvelle');
-  if(cols.id>=0)values[cols.id]=id;
-  if(cols.updated>=0)values[cols.updated]=now;
-  if(cols.source>=0)values[cols.source]=String(o.source||'Application');
-  if(cols.name>=0)values[cols.name]=String(o.name||'');
-  if(cols.email>=0)values[cols.email]=String(o.email||'');
-  if(cols.category>=0)values[cols.category]=String(o.category||'');
-  sh.getRange(row,1,1,values.length).setValues([values]);
-  PropertiesService.getScriptProperties().setProperty(SUGGESTION_LAST_ROW_PROP+sh.getSheetId(),String(row));
-  const s=suggestionRowObject_(sh,row,suggestionCols_(sh));
-  notifyAdministrationSuggestion_(s);
-  sendSuggestionMail_(s);
-  return{ok:true,suggestion:s};
-}
-function updateSuggestionStatus_(id,status){
-  id=String(id||'').trim();status=String(status||'').trim();
-  const allowed=['Nouvelle','À étudier','Retenue','Refusée','Réalisée'];
-  if(!id||!allowed.includes(status))return{ok:false,error:'Statut invalide.'};
-  const sh=suggestionsSheet_(),cols=suggestionCols_(sh);
-  for(let row=2;row<=sh.getLastRow();row++){
-    if(String(sh.getRange(row,cols.id+1).getValue()||'')===id){
-      sh.getRange(row,cols.status+1).setValue(status);
-      sh.getRange(row,cols.updated+1).setValue(new Date().toISOString());
-      return{ok:true};
-    }
-  }
-  return{ok:false,error:'Suggestion introuvable.'};
+
+function suggestionsAdminRow_(sh, row) {
+  const v = sh.getRange(row, 1, 1, 9).getDisplayValues()[0];
+  return {
+    id: String(row),
+    row: row,
+    title: String(v[0] || '').trim(),
+    category: String(v[1] || '').trim(),
+    name: String(v[2] || '').trim(),
+    status: String(v[3] || '').trim() || 'Pas commencé',
+    date: String(v[4] || '').trim(),
+    email: String(v[5] || '').trim(),
+    summary: String(v[6] || '').trim(),
+    place: String(v[7] || '').trim(),
+    text: String(v[8] || '').trim(),
+    source: 'Site'
+  };
 }
 
-// Ces deux fonctions sont à appeler depuis le doGet/doPost EXISTANT du projet Suggestions.
-function suggestionsApiGet_(action){
-  if(action==='listSuggestions')return listSuggestions_();
+function listSuggestionsApp_() {
+  const sh = suggestionsAdminSheet_();
+  detectNewSuggestionsApp_(sh);
+  const out = [];
+  for (let row = 2; row <= sh.getLastRow(); row++) {
+    const s = suggestionsAdminRow_(sh, row);
+    if (s.title || s.text) out.push(s);
+  }
+  out.reverse();
+  return { ok: true, suggestions: out };
+}
+
+function updateSuggestionApp_(o) {
+  o = o || {};
+  const row = Number(o.row || o.id || 0);
+  const sh = suggestionsAdminSheet_();
+  if (row < 2 || row > sh.getLastRow()) return { ok:false, error:'Suggestion introuvable.' };
+
+  // Modification contrôlée des 9 colonnes existantes.
+  const fields = {
+    title:1, category:2, name:3, status:4, date:5,
+    email:6, summary:7, place:8, text:9
+  };
+  Object.keys(fields).forEach(function(k) {
+    if (Object.prototype.hasOwnProperty.call(o, k)) {
+      if (k === 'status' && SUGGESTIONS_STATUSES.indexOf(String(o[k])) < 0) return;
+      sh.getRange(row, fields[k]).setValue(o[k]);
+    }
+  });
+  return { ok:true, suggestion:suggestionsAdminRow_(sh,row) };
+}
+
+function updateSuggestionStatusApp_(id, status) {
+  status = String(status || '').trim();
+  if (SUGGESTIONS_STATUSES.indexOf(status) < 0) return {ok:false,error:'Statut invalide.'};
+  return updateSuggestionApp_({id:id,status:status});
+}
+
+function addSuggestionApp_(o) {
+  o = o || {};
+  const sh = suggestionsAdminSheet_();
+  const title = String(o.title || o.titre || '').trim();
+  const text = String(o.text || o.suggestion || '').trim();
+  if (!title && !text) return {ok:false,error:'La proposition est vide.'};
+  sh.appendRow([
+    title || text.substring(0,80),
+    String(o.category || o.nature || '').trim(),
+    String(o.name || '').trim(),
+    SUGGESTIONS_STATUSES.indexOf(String(o.status || '')) >= 0 ? String(o.status) : 'Pas commencé',
+    new Date(),
+    String(o.email || '').trim(),
+    String(o.summary || '').trim(),
+    String(o.place || '').trim(),
+    text
+  ]);
+  const row = sh.getLastRow();
+  // Une proposition créée depuis l'administration est déjà connue de l'app :
+  // on évite qu'elle soit détectée ensuite comme une nouvelle soumission du site.
+  PropertiesService.getScriptProperties().setProperty(SUGGESTIONS_LAST_ROW_PROP,String(row));
+  return {ok:true,suggestion:suggestionsAdminRow_(sh,row)};
+}
+
+function createAdminSuggestionNotification_(s) {
+  const payload = {
+    action:'createNotification',
+    notification:{
+      type:'suggestion',
+      title:'Nouvelle suggestion',
+      message:s.title || s.summary || s.text,
+      targetPermissions:['suggestions'],
+      data:{suggestionId:String(s.id),row:s.row,source:'Site'}
+    }
+  };
+  try {
+    UrlFetchApp.fetch(ADMIN_API_URL,{
+      method:'post',
+      contentType:'text/plain;charset=utf-8',
+      payload:JSON.stringify(payload),
+      muteHttpExceptions:true,
+      followRedirects:true
+    });
+  } catch(e) {
+    console.warn('Notification administration impossible : '+e);
+  }
+}
+
+function detectNewSuggestionsApp_(sh) {
+  sh = sh || suggestionsAdminSheet_();
+  const props = PropertiesService.getScriptProperties();
+  const last = sh.getLastRow();
+  const raw = props.getProperty(SUGGESTIONS_LAST_ROW_PROP);
+  if (raw === null) {
+    // Première installation : les anciennes lignes ne déclenchent pas une avalanche de notifications.
+    props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(last));
+    return {ok:true,newCount:0,initialized:true};
+  }
+  let previous = Number(raw || 1);
+  if (last < previous) previous = last;
+  let count = 0;
+  for (let row = Math.max(2,previous+1); row <= last; row++) {
+    const s = suggestionsAdminRow_(sh,row);
+    if (!s.title && !s.text) continue;
+    createAdminSuggestionNotification_(s);
+    count++;
+  }
+  props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(last));
+  return {ok:true,newCount:count};
+}
+
+// À exécuter UNE FOIS manuellement dans Apps Script pour créer la surveillance automatique.
+// Le formulaire public reste inchangé : ce déclencheur observe seulement les nouvelles lignes.
+function installerSurveillanceSuggestionsApp() {
+  ScriptApp.getProjectTriggers()
+    .filter(function(t){return t.getHandlerFunction()==='surveillerSuggestionsApp';})
+    .forEach(function(t){ScriptApp.deleteTrigger(t);});
+  ScriptApp.newTrigger('surveillerSuggestionsApp').timeBased().everyMinutes(1).create();
+  // Baseline immédiate : pas de notifications pour l'historique déjà présent.
+  PropertiesService.getScriptProperties().setProperty(
+    SUGGESTIONS_LAST_ROW_PROP,
+    String(suggestionsAdminSheet_().getLastRow())
+  );
+  return {ok:true};
+}
+
+function surveillerSuggestionsApp() {
+  return detectNewSuggestionsApp_(suggestionsAdminSheet_());
+}
+
+// Fonctions API prévues pour un endpoint Apps Script séparé dédié à l'application.
+function suggestionsAppApiGet_(action) {
+  if (action === 'listSuggestions') return listSuggestionsApp_();
   return null;
 }
-function suggestionsApiPost_(body){
-  if(body.action==='addSuggestion')return addSuggestion_(body.suggestion||{});
-  if(body.action==='updateSuggestionStatus')return updateSuggestionStatus_(body.id||'',body.status||'');
+function suggestionsAppApiPost_(body) {
+  body = body || {};
+  if (body.action === 'addSuggestion') return addSuggestionApp_(body.suggestion || {});
+  if (body.action === 'updateSuggestionStatus') return updateSuggestionStatusApp_(body.id || '',body.status || '');
+  if (body.action === 'updateSuggestion') return updateSuggestionApp_(body.suggestion || {});
   return null;
 }
