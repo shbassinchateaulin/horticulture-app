@@ -1,0 +1,6 @@
+(()=>{
+let running=false;
+function button(){return document.getElementById('otherSessions')}
+async function run(){if(running)return;const b=button();if(!b)return;if(!confirm('Déconnecter tous les autres appareils connectés à ce compte ?\n\nCet appareil restera connecté.'))return;running=true;const old=b.textContent;b.disabled=true;b.textContent='Déconnexion des autres appareils…';try{if(!window.HorticultureSessions?.disconnectOthers)throw new Error('Le service de sessions n’est pas encore chargé.');const r=await window.HorticultureSessions.disconnectOthers();b.textContent='Autres appareils déconnectés ✓';setTimeout(()=>{if(document.body.contains(b)){b.textContent=old;b.disabled=false}},1800)}catch(e){alert(e.message||'Impossible de déconnecter les autres appareils.');if(document.body.contains(b)){b.textContent=old;b.disabled=false}}finally{running=false}}
+document.addEventListener('click',e=>{const b=e.target.closest?.('#otherSessions');if(!b)return;e.preventDefault();e.stopImmediatePropagation();run()},true);
+})();
