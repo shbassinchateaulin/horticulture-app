@@ -1,0 +1,13 @@
+(()=>{
+const API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
+const SK='horticulture-admin-session-v1',PK='horticulture-admin-persistent-session-v1',GK='horticulture-session-generation-v1';
+let busy=false,stopped=false;
+function session(){try{return JSON.parse(localStorage.getItem(PK)||sessionStorage.getItem(SK)||'null')}catch{return null}}
+function generation(){return localStorage.getItem(GK)||sessionStorage.getItem(GK)||''}
+function saveGeneration(v){if(!v)return;const persistent=!!localStorage.getItem(PK);if(persistent){localStorage.setItem(GK,v);sessionStorage.removeItem(GK)}else{sessionStorage.setItem(GK,v);localStorage.removeItem(GK)}}
+function clearSession(){localStorage.removeItem(PK);sessionStorage.removeItem(SK);localStorage.removeItem(GK);sessionStorage.removeItem(GK)}
+function forceLogout(msg){if(stopped)return;stopped=true;clearSession();try{localStorage.setItem('horticulture-session-message-v1',msg||'Votre session a été déconnectée depuis un autre appareil.')}catch{}location.reload()}
+async function state(){const s=session();if(!s?.id||busy||stopped)return null;busy=true;try{const r=await fetch(API+'?action=getSessionState&userId='+encodeURIComponent(s.id)+'&t='+Date.now(),{cache:'no-store'}),j=await r.json();if(!j?.ok)return null;const local=generation();if(!local){saveGeneration(j.generation);return j}if(String(local)!==String(j.generation)){forceLogout('Votre session a été déconnectée depuis un autre appareil.');return null}return j}catch(e){return null}finally{busy=false}}
+async function disconnectOthers(){const s=session();if(!s?.id)throw new Error('Aucune session active.');if(!generation())await state();const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'disconnectOtherSessions',userId:s.id,currentGeneration:generation()})}),j=await r.json();if(!j?.ok){if(j?.sessionExpired)forceLogout('Cette session n’est plus valide.');throw new Error(j?.error||'Impossible de déconnecter les autres appareils.')}saveGeneration(j.generation);return j}
+setTimeout(state,500);setInterval(state,3000);window.addEventListener('focus',state);document.addEventListener('visibilitychange',()=>{if(!document.hidden)state()});window.HorticultureSessions={check:state,disconnectOthers,logout:()=>{clearSession();location.reload()}};
+})();
