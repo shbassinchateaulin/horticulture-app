@@ -7,17 +7,31 @@ function sessionUser_(userId){
   return listUsers_().find(u=>String(u.id)===String(userId)&&u.active)||null;
 }
 
-function sessionGeneration_(userId){
+function sessionStateRecord_(userId){
   const u=sessionUser_(userId);
   if(!u)return null;
   const props=PropertiesService.getScriptProperties();
   const key=SESSION_PROP_PREFIX+String(userId);
-  let generation=props.getProperty(key);
-  if(!generation){
-    generation=Utilities.getUuid();
-    props.setProperty(key,generation);
+  const passwordFingerprint=sha256_(String(u.passwordHash||''));
+  let raw=props.getProperty(key),record=null;
+  if(raw){
+    try{record=JSON.parse(raw)}catch{record={generation:String(raw),passwordFingerprint:''}}
   }
-  return generation;
+  if(!record||!record.generation){
+    record={generation:Utilities.getUuid(),passwordFingerprint:passwordFingerprint};
+    props.setProperty(key,JSON.stringify(record));
+    return record;
+  }
+  if(String(record.passwordFingerprint||'')!==String(passwordFingerprint)){
+    record={generation:Utilities.getUuid(),passwordFingerprint:passwordFingerprint};
+    props.setProperty(key,JSON.stringify(record));
+  }
+  return record;
+}
+
+function sessionGeneration_(userId){
+  const record=sessionStateRecord_(userId);
+  return record?record.generation:null;
 }
 
 function getSessionState_(userId){
@@ -27,13 +41,13 @@ function getSessionState_(userId){
 }
 
 // Invalide toutes les sessions déjà ouvertes de CE compte uniquement.
-// Utilisé après un changement de mot de passe et par le bouton de déconnexion à distance.
+// Utilisé par le bouton de déconnexion à distance.
 function rotateSessionGeneration_(userId){
   const u=sessionUser_(userId);
   if(!u)return null;
-  const next=Utilities.getUuid();
-  PropertiesService.getScriptProperties().setProperty(SESSION_PROP_PREFIX+String(userId),next);
-  return next;
+  const record={generation:Utilities.getUuid(),passwordFingerprint:sha256_(String(u.passwordHash||''))};
+  PropertiesService.getScriptProperties().setProperty(SESSION_PROP_PREFIX+String(userId),JSON.stringify(record));
+  return record.generation;
 }
 
 function disconnectOtherSessions_(userId,currentGeneration){
