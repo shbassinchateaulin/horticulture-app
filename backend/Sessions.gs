@@ -1,7 +1,7 @@
 // Sessions.gs — déconnexion synchronisée des autres appareils
 // À ajouter dans le même projet Apps Script que Code.gs.
 
-const SESSION_PROP_PREFIX='sessionGeneration:';
+const SESSIONS_PROP_PREFIX='sessionGeneration:';
 
 function sessionUser_(userId){
   return listUsers_().find(u=>String(u.id)===String(userId)&&u.active)||null;
@@ -11,7 +11,7 @@ function sessionStateRecord_(userId){
   const u=sessionUser_(userId);
   if(!u)return null;
   const props=PropertiesService.getScriptProperties();
-  const key=SESSION_PROP_PREFIX+String(userId);
+  const key=SESSIONS_PROP_PREFIX+String(userId);
   const passwordFingerprint=sha256_(String(u.passwordHash||''));
   let raw=props.getProperty(key),record=null;
   if(raw){
@@ -46,7 +46,7 @@ function rotateSessionGeneration_(userId){
   const u=sessionUser_(userId);
   if(!u)return null;
   const record={generation:Utilities.getUuid(),passwordFingerprint:sha256_(String(u.passwordHash||''))};
-  PropertiesService.getScriptProperties().setProperty(SESSION_PROP_PREFIX+String(userId),JSON.stringify(record));
+  PropertiesService.getScriptProperties().setProperty(SESSIONS_PROP_PREFIX+String(userId),JSON.stringify(record));
   return record.generation;
 }
 
