@@ -17,7 +17,8 @@
       safari_web_id: "web.onesignal.auto.185a3882-a3fa-4e4c-9216-d752294e35fc",
       serviceWorkerPath: "horticulture-app/push/onesignal/OneSignalSDKWorker.js",
       serviceWorkerParam: { scope: "/horticulture-app/push/onesignal/" },
-      notifyButton: { enable: false }
+      notifyButton: { enable: false },
+      welcomeNotification: { disable: true }
     });
 
     let bound='';
