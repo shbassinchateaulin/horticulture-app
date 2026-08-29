@@ -18,7 +18,12 @@
       serviceWorkerPath: "horticulture-app/push/onesignal/OneSignalSDKWorker.js",
       serviceWorkerParam: { scope: "/horticulture-app/push/onesignal/" },
       notifyButton: { enable: false },
-      welcomeNotification: { disable: true }
+      welcomeNotification: {
+        disable: false,
+        title: "Société d’Horticulture et d’Art Floral du Bassin de Châteaulin",
+        message: "Merci pour votre intérêt pour l’association. Vous recevrez désormais les informations qui vous concernent directement.",
+        url: "https://shbassinchateaulin.github.io/horticulture-app/"
+      }
     });
 
     let bound='';
