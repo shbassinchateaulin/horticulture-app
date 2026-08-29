@@ -43,15 +43,7 @@ function sendOneSignalPush_(n){
   const recipients=oneSignalRecipients_(n);
   if(!recipients.length)return{ok:false,configured:true,error:'Aucun destinataire actif'};
   const data=Object.assign({},n.data||{},{notificationId:String(n.id||''),type:String(n.type||'info')});
-  const payload={
-    app_id:ONESIGNAL_APP_ID,
-    target_channel:'push',
-    include_aliases:{external_id:recipients},
-    headings:{fr:String(n.title||'Notification'),en:String(n.title||'Notification')},
-    contents:{fr:String(n.message||''),en:String(n.message||'')},
-    data:data,
-    url:(typeof APP_URL!=='undefined'&&APP_URL)?APP_URL:'https://shbassinchateaulin.github.io/horticulture-app/'
-  };
+  const payload={app_id:ONESIGNAL_APP_ID,target_channel:'push',include_aliases:{external_id:recipients},headings:{fr:String(n.title||'Notification'),en:String(n.title||'Notification')},contents:{fr:String(n.message||''),en:String(n.message||'')},data:data,url:(typeof APP_URL!=='undefined'&&APP_URL)?APP_URL:'https://shbassinchateaulin.github.io/horticulture-app/'};
   try{
     const r=UrlFetchApp.fetch(ONESIGNAL_API_URL,{method:'post',contentType:'application/json',headers:{Authorization:'Key '+apiKey},payload:JSON.stringify(payload),muteHttpExceptions:true});
     const code=r.getResponseCode(),text=r.getContentText();let body={};try{body=JSON.parse(text||'{}')}catch(_){body={raw:text}}
@@ -74,49 +66,30 @@ function listNotificationsForUser_(userId){cleanupNotifications_();const u=notif
 function markNotificationRead_(notificationId,userId){const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable ou inactif'};const visible=listNotificationsForUser_(userId);if(!visible.ok||!visible.notifications.some(n=>n.id===String(notificationId)))return{ok:false,error:'Notification inaccessible'};const sh=notifReadSheet_(),v=sh.getLastRow()<2?[]:sh.getDataRange().getValues();for(let i=1;i<v.length;i++)if(String(v[i][0])===String(notificationId)&&String(v[i][1])===String(userId)){const at=new Date().toISOString();sh.getRange(i+1,3).setValue(at);return{ok:true,readAt:at}}const at=new Date().toISOString();sh.appendRow([String(notificationId),String(userId),at]);return{ok:true,readAt:at}}
 function markAllNotificationsRead_(userId){const r=listNotificationsForUser_(userId);if(!r.ok)return r;r.notifications.filter(n=>!n.read).forEach(n=>markNotificationRead_(n.id,userId));return{ok:true}}
 function createNotificationTest_(userId){const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable'};return createNotification_({type:'test',title:'Notification de test',message:'Cette notification est synchronisée sur tous les appareils connectés avec votre compte.',targetUsers:[u.id],data:{test:true}})}
-
-// Retourne les utilisateurs actifs qui sont réellement destinataires d'une notification.
 function notificationRecipients_(n){return listUsers_().filter(u=>u.active&&notificationVisibleForUser_(n,u))}
-
-// Diagnostic manuel utile après avoir ajouté ONESIGNAL_API_KEY aux propriétés du script.
-function testerPushOneSignal_(userId){
-  const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable'};
-  return createNotification_({type:'test',title:'Test des notifications',message:'Si vous voyez ce message, les notifications push OneSignal fonctionnent.',targetUsers:[u.id],data:{test:true,source:'Apps Script'}});
+function testerPushOneSignal_(userId){const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable'};return createNotification_({type:'test',title:'Test des notifications',message:'Si vous voyez ce message, les notifications push OneSignal fonctionnent.',targetUsers:[u.id],data:{test:true,source:'Apps Script'}})}
+function testerPushOneSignalSuperAdmin(){
+  const u=listUsers_().find(x=>x.active&&(notifKey_(x.role).includes('superadmin')||notifKey_(x.function).includes('superadmin')||notifKey_(x.username)==='superadmin'));
+  if(!u)return{ok:false,error:'Aucun compte Super Admin actif trouvé.'};
+  return testerPushOneSignal_(u.id);
 }
 function diagnosticOneSignal_(){return{ok:true,appId:ONESIGNAL_APP_ID,apiKeyConfigured:!!oneSignalApiKey_()}}
-
-// Supprime une notification 24 h après que TOUS ses destinataires l'ont lue.
-// Supprime en même temps ses lignes dans « Notifications lectures ».
 function cleanupNotifications_(){
   const sh=notifSheet_(),readSh=notifReadSheet_();
   if(sh.getLastRow()<2)return{ok:true,deleted:0};
   const rows=sh.getDataRange().getValues();
   const readRows=readSh.getLastRow()<2?[]:readSh.getDataRange().getValues();
   const readsByNotif={};
-  for(let i=1;i<readRows.length;i++){
-    const nid=String(readRows[i][0]||''),uid=String(readRows[i][1]||''),at=String(readRows[i][2]||'');
-    if(!nid||!uid||!at)continue;
-    if(!readsByNotif[nid])readsByNotif[nid]={};
-    readsByNotif[nid][uid]=at;
-  }
+  for(let i=1;i<readRows.length;i++){const nid=String(readRows[i][0]||''),uid=String(readRows[i][1]||''),at=String(readRows[i][2]||'');if(!nid||!uid||!at)continue;if(!readsByNotif[nid])readsByNotif[nid]={};readsByNotif[nid][uid]=at;}
   const now=Date.now(),deleteIds=[];
   for(let i=1;i<rows.length;i++){
     if(!rows[i][0])continue;
     const n={id:String(rows[i][0]),targetUsers:String(rows[i][4]||''),targetPermissions:String(rows[i][5]||'')};
-    const recipients=notificationRecipients_(n);
-    if(!recipients.length)continue;
-    const map=readsByNotif[n.id]||{};
-    if(!recipients.every(u=>!!map[String(u.id)]))continue;
-    const lastRead=Math.max.apply(null,recipients.map(u=>Date.parse(map[String(u.id)])||0));
-    if(lastRead&&now-lastRead>=NOTIF_CLEANUP_DELAY_MS)deleteIds.push(n.id);
+    const recipients=notificationRecipients_(n);if(!recipients.length)continue;
+    const map=readsByNotif[n.id]||{};if(!recipients.every(u=>!!map[String(u.id)]))continue;
+    const lastRead=Math.max.apply(null,recipients.map(u=>Date.parse(map[String(u.id)])||0));if(lastRead&&now-lastRead>=NOTIF_CLEANUP_DELAY_MS)deleteIds.push(n.id);
   }
   if(!deleteIds.length)return{ok:true,deleted:0};
-  const set=new Set(deleteIds);
-  for(let i=sh.getLastRow();i>=2;i--)if(set.has(String(sh.getRange(i,1).getValue())))sh.deleteRow(i);
-  for(let i=readSh.getLastRow();i>=2;i--)if(set.has(String(readSh.getRange(i,1).getValue())))readSh.deleteRow(i);
-  return{ok:true,deleted:deleteIds.length};
+  const set=new Set(deleteIds);for(let i=sh.getLastRow();i>=2;i--)if(set.has(String(sh.getRange(i,1).getValue())))sh.deleteRow(i);for(let i=readSh.getLastRow();i>=2;i--)if(set.has(String(readSh.getRange(i,1).getValue())))readSh.deleteRow(i);return{ok:true,deleted:deleteIds.length};
 }
-
-// À utiliser avec un déclencheur Apps Script horaire si souhaité.
-// Le nettoyage est aussi lancé automatiquement lorsqu'un utilisateur récupère ses notifications.
 function nettoyerAnciennesNotifications(){return cleanupNotifications_()}
