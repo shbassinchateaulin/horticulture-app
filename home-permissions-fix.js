@@ -1,5 +1,5 @@
 (()=>{
-const MAP={communication:['Publier','Actualités'],sorties:['Sorties'],adherents:['Adhérents'],comptabilite:['Comptabilité','Trésorerie'],suggestions:['Suggestions'],acces:['Gestion des accès']};
+const MAP={communication:['Publier','Actualités'],sorties:['Sorties'],adherents:['Adhérents'],comptabilite:['Comptabilité','Trésorerie'],suggestions:['Suggestions'],consultation_ag:['Consultation AG'],acces:['Gestion des accès']};
 function drawerAllowed(){const visible=[...document.querySelectorAll('.dlist button')].filter(b=>getComputedStyle(b).display!=='none').map(b=>(b.textContent||'').trim());const set=new Set();for(const[p,words]of Object.entries(MAP))if(visible.some(t=>words.some(w=>t.includes(w))))set.add(p);return set}
 function pFor(el){const p=el.dataset?.permission;if(p)return p;const t=(el.textContent||'').trim();for(const[x,words]of Object.entries(MAP))if(words.some(w=>t.includes(w)))return x;return''}
 function apply(){const home=document.querySelector('#home');if(!home)return;const allowed=drawerAllowed();home.querySelectorAll('.dashTile').forEach(el=>{const p=pFor(el);if(p)el.classList.toggle('homeNoAccess',!allowed.has(p))});home.querySelectorAll('.quickBtn').forEach(el=>{if(el.classList.contains('public'))return;const p=pFor(el);if(p)el.classList.toggle('homeNoAccess',!allowed.has(p))});}
