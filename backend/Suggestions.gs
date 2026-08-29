@@ -58,9 +58,6 @@ function suggestionsAdminRow_(sh, row) {
   };
 }
 
-// Chemin de lecture rapide pour l'application : aucune notification, aucun archivage,
-// aucune lecture cellule par cellule. Les déclencheurs s'occupent de la surveillance
-// et archiveDueSuggestionsApp_ est exécuté par le déclencheur périodique.
 function listSuggestionsApp_() {
   const sh = suggestionsAdminSheet_();
   const last = sh.getLastRow();
@@ -198,13 +195,22 @@ function detectNewSuggestionsApp_(sh) {
 
 function installerSurveillanceSuggestionsApp() {
   const triggers = ScriptApp.getProjectTriggers();
-  triggers.filter(function(t){const fn=t.getHandlerFunction();return fn==='surveillerSuggestionsApp'||fn==='surveillerSuggestionsEditionApp';}).forEach(function(t){ScriptApp.deleteTrigger(t);});
+  const managed = ['surveillerSuggestionsApp','surveillerSuggestionsEditionApp','surveillerSuggestionsFormulaireApp'];
+  triggers.filter(function(t){return managed.indexOf(t.getHandlerFunction()) >= 0;}).forEach(function(t){ScriptApp.deleteTrigger(t);});
+
   const ss = SpreadsheetApp.openById(SUGGESTIONS_SPREADSHEET_ID);
   PropertiesService.getScriptProperties().setProperty(SUGGESTIONS_LAST_ROW_PROP,String(suggestionsAdminSheet_().getLastRow()));
   if (typeof suggestionsArchiveSheet_ === 'function') suggestionsArchiveSheet_();
+
   ScriptApp.newTrigger('surveillerSuggestionsEditionApp').forSpreadsheet(ss).onEdit().create();
+  try {
+    ScriptApp.newTrigger('surveillerSuggestionsFormulaireApp').forSpreadsheet(ss).onFormSubmit().create();
+  } catch (e) {
+    console.warn('Déclencheur formulaire non créé : '+e);
+  }
   ScriptApp.newTrigger('surveillerSuggestionsApp').timeBased().everyMinutes(1).create();
-  return {ok:true,instant:true,fallbackMinutes:1,season:typeof suggestionSeason_ === 'function' ? suggestionSeason_(new Date()) : ''};
+
+  return diagnosticSurveillanceSuggestionsApp();
 }
 
 function surveillerSuggestionsEditionApp(e) {
@@ -219,10 +225,44 @@ function surveillerSuggestionsEditionApp(e) {
   }
 }
 
+function surveillerSuggestionsFormulaireApp(e) {
+  try {
+    const range = e && e.range, sh = range && range.getSheet ? range.getSheet() : null;
+    if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) return {ok:true,ignored:true};
+    return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
+  } catch (err) {
+    console.warn('Surveillance formulaire Suggestions impossible : '+err);
+    return {ok:false,error:String(err)};
+  }
+}
+
 function surveillerSuggestionsApp() {
-  const detection = detectNewSuggestionsApp_(suggestionsAdminSheet_());
-  if (typeof archiveDueSuggestionsApp_ === 'function') archiveDueSuggestionsApp_();
-  return detection;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return {ok:true,skipped:true,reason:'already-running'};
+  try {
+    const detection = detectNewSuggestionsApp_(suggestionsAdminSheet_());
+    if (typeof archiveDueSuggestionsApp_ === 'function') archiveDueSuggestionsApp_();
+    return detection;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function diagnosticSurveillanceSuggestionsApp() {
+  const sh = suggestionsAdminSheet_();
+  const props = PropertiesService.getScriptProperties();
+  const triggers = ScriptApp.getProjectTriggers().map(function(t){
+    return {handler:t.getHandlerFunction(),eventType:String(t.getEventType()),source:String(t.getTriggerSource())};
+  });
+  return {
+    ok:true,
+    lastRow:sh.getLastRow(),
+    lastSeenRow:Number(props.getProperty(SUGGESTIONS_LAST_ROW_PROP) || 0),
+    triggers:triggers,
+    hasMinuteTrigger:triggers.some(function(t){return t.handler==='surveillerSuggestionsApp';}),
+    hasEditTrigger:triggers.some(function(t){return t.handler==='surveillerSuggestionsEditionApp';}),
+    hasFormTrigger:triggers.some(function(t){return t.handler==='surveillerSuggestionsFormulaireApp';})
+  };
 }
 
 // Test manuel : crée une vraie notification à partir de la dernière suggestion sans modifier le marqueur de surveillance.
