@@ -17,9 +17,21 @@ async function fetchJson(url,options){const controller=new AbortController();con
 async function post(body){const j=await fetchJson(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});if(!j?.ok)throw new Error(j?.error||'Erreur serveur');return j}
 function shown(){try{return new Set(JSON.parse(localStorage.getItem(SHOWN_KEY)||'[]').map(String))}catch{return new Set()}}
 function saveShown(set){try{localStorage.setItem(SHOWN_KEY,JSON.stringify([...set].slice(-250)))}catch{}}
-async function showSystemNotification(n){if(!('Notification' in window)||Notification.permission!=='granted'||!('serviceWorker' in navigator))return;try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW timeout')),2500))]);const payload={id:n.id,type:n.type,title:n.title||'Nouvelle notification',message:n.message||'',suggestionId:n.data?.suggestionId||''};if(reg.active)reg.active.postMessage({type:'horticulture-show-notification',notification:payload});else await reg.showNotification(payload.title,{body:payload.message,icon:'./app-icon-botanical-v4.png',badge:'./app-icon-192.png',tag:'horticulture-'+String(payload.id),data:{url:'./',type:payload.type,notificationId:payload.id,suggestionId:payload.suggestionId}})}catch(e){console.warn('System notification failed',e)}}
-async function notifyNewSystemItems(previousIds){if(!hydrated)return;const seen=shown(),fresh=notifications.filter(n=>!n.read&&!previousIds.has(String(n.id))&&!seen.has(String(n.id)));for(const n of fresh){seen.add(String(n.id));await showSystemNotification(n)}saveShown(seen)}
-async function notifyRecentInitialItems(){const seen=shown(),now=Date.now();const fresh=notifications.filter(n=>{if(n.read||seen.has(String(n.id)))return false;const t=Date.parse(n.createdAt||'');return !!t&&now-t>=0&&now-t<=INITIAL_POPUP_MAX_AGE_MS});for(const n of fresh){seen.add(String(n.id));await showSystemNotification(n)}notifications.forEach(n=>{if(!seen.has(String(n.id))&&n.read)seen.add(String(n.id))});saveShown(seen)}
+async function showSystemNotification(n){
+  if(!('Notification' in window)||Notification.permission!=='granted'||!('serviceWorker' in navigator))return false;
+  try{
+    const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,rej)=>setTimeout(()=>rej(new Error('SW timeout')),2500))]);
+    const payload={id:n.id,type:n.type,title:n.title||'Nouvelle notification',message:n.message||'',suggestionId:n.data?.suggestionId||''};
+    if(reg.active){
+      reg.active.postMessage({type:'horticulture-show-notification',notification:payload});
+      return true;
+    }
+    await reg.showNotification(payload.title,{body:payload.message,icon:'./app-icon-botanical-v4.png',badge:'./app-icon-192.png',tag:'horticulture-'+String(payload.id),data:{url:'./',type:payload.type,notificationId:payload.id,suggestionId:payload.suggestionId}});
+    return true;
+  }catch(e){console.warn('System notification failed',e);return false}
+}
+async function notifyNewSystemItems(previousIds){if(!hydrated)return;const seen=shown(),fresh=notifications.filter(n=>!n.read&&!previousIds.has(String(n.id))&&!seen.has(String(n.id)));for(const n of fresh){const ok=await showSystemNotification(n);if(ok)seen.add(String(n.id))}saveShown(seen)}
+async function notifyRecentInitialItems(){const seen=shown(),now=Date.now();const fresh=notifications.filter(n=>{if(n.read||seen.has(String(n.id)))return false;const t=Date.parse(n.createdAt||'');return !!t&&now-t>=0&&now-t<=INITIAL_POPUP_MAX_AGE_MS});for(const n of fresh){const ok=await showSystemNotification(n);if(ok)seen.add(String(n.id))}notifications.forEach(n=>{if(!seen.has(String(n.id))&&n.read)seen.add(String(n.id))});saveShown(seen)}
 function emit(){badge();suggestionBadge();window.dispatchEvent(new CustomEvent('horticulture:notifications',{detail:{notifications:notifications.slice(),security:security.slice(),unread:unread().slice()}}))}
 async function refresh(render=true,force=false){const s=session();if(!s?.id||busy||document.hidden)return;if(!force&&Date.now()-lastRefresh<MIN_REFRESH_MS)return;busy=true;lastRefresh=Date.now();try{const previousIds=new Set(notifications.map(n=>String(n.id)));const q=[fetchJson(API+'?action=listNotifications&userId='+encodeURIComponent(s.id)+'&t='+Date.now(),{cache:'no-store'})];if(isSuper())q.push(fetchJson(API+'?action=listSecurityAlerts&t='+Date.now(),{cache:'no-store'}));const r=await Promise.all(q);if(r[0]?.ok&&Array.isArray(r[0].notifications))notifications=r[0].notifications;if(r[1]?.ok&&Array.isArray(r[1].alerts))security=r[1].alerts;emit();if(hydrated)await notifyNewSystemItems(previousIds);else{hydrated=true;await notifyRecentInitialItems()}if(open&&render)renderTray()}catch(e){console.warn('Notification center refresh failed',e)}finally{busy=false}}
 async function markRead(id){const s=session();if(!s?.id)return;const n=notifications.find(x=>String(x.id)===String(id));if(n)n.read=true;emit();try{await post({action:'markNotificationRead',notificationId:id,userId:s.id});await refresh(false,true)}catch(e){if(n)n.read=false;emit();throw e}}
@@ -33,5 +45,6 @@ setTimeout(()=>refresh(false,true),900);
 setInterval(()=>{if(!document.hidden)refresh(true)},12000);
 window.addEventListener('focus',()=>refresh(true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>refresh(true),250)});
+window.addEventListener('horticulture-notification-permission',()=>setTimeout(()=>refresh(false,true),150));
 window.HorticultureNotificationCenter={refresh:(render=true)=>refresh(render,true),markRead,markSuggestionRead,getNotifications:()=>notifications.slice(),getUnread:()=>unread().slice()};
 })();
