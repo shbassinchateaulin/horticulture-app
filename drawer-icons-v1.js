@@ -1,0 +1,17 @@
+(()=>{
+const SVG={
+home:'<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg>',
+doc:'<svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg>',
+cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/></svg>',
+users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><circle cx="17" cy="9" r="3"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7M15 15c4 0 7 2 7 6"/></svg>',
+euro:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 7.5a5 5 0 1 0 0 9M7 10h7M7 14h7"/></svg>',
+chat:'<svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>',
+gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 15a2 2 0 0 0 .4 2l-2.4 2.4a2 2 0 0 0-2-.4 2 2 0 0 0-1 1.8h-4A2 2 0 0 0 9 19a2 2 0 0 0-2 .4L4.6 17a2 2 0 0 0 .4-2A2 2 0 0 0 3.2 14v-4A2 2 0 0 0 5 9a2 2 0 0 0-.4-2L7 4.6A2 2 0 0 0 9 5a2 2 0 0 0 1-1.8h4A2 2 0 0 0 15 5a2 2 0 0 0 2-.4L19.4 7a2 2 0 0 0-.4 2 2 2 0 0 0 1.8 1v4A2 2 0 0 0 19 15z"/></svg>',
+sliders:'<svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>',
+profile:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3.5-7 8-7s8 2.5 8 7"/></svg>',
+logout:'<svg viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"/></svg>'};
+const style=document.createElement('style');style.id='drawer-icons-style';style.textContent=`.dlist button{display:flex!important;align-items:center!important;gap:12px!important;padding:0 11px!important;font-weight:600;color:#28443a}.dlist .drawerI{width:34px;height:34px;border-radius:10px;background:#edf7f0;color:#07583f;display:grid;place-items:center;padding:7px;flex:0 0 auto}.dlist .drawerI svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.dlist button:hover .drawerI{background:#e2f1e7}.dlist button.danger .drawerI{background:#fff0f0;color:#c43b3b}`;document.head.appendChild(style);
+function key(text){text=text.toLowerCase();if(text.includes('accueil'))return'home';if(text.includes('actualité'))return'doc';if(text.includes('sortie'))return'cal';if(text.includes('adhérent'))return'users';if(text.includes('comptab')||text.includes('paiement'))return'euro';if(text.includes('suggestion'))return'chat';if(text.includes('accès')||text.includes('acces'))return'gear';if(text.includes('param'))return'sliders';if(text.includes('profil'))return'profile';if(text.includes('déconn')||text.includes('deconn'))return'logout';return null}
+function apply(){document.querySelectorAll('.dlist button').forEach(b=>{if(b.querySelector('.drawerI'))return;const k=key(b.textContent||'');if(!k)return;const label=(b.textContent||'').replace(/^\s*[⌂▤▣♙€☵⚙]+\s*/,'').trim();b.textContent='';const i=document.createElement('span');i.className='drawerI';i.innerHTML=SVG[k];const t=document.createElement('span');t.textContent=label;b.append(i,t)})}
+apply();new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});
+})();
