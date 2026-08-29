@@ -1,11 +1,10 @@
 // Module complémentaire pour Suggestions.gs
 // Saison : 1er novembre -> 31 octobre.
-// Les statuts Terminé / Non retenu disparaissent de la liste active immédiatement,
-// restent 24 h dans "Tableau suggestion", puis sont déplacés vers "Archives suggestions".
+// Les statuts Terminé / Non retenu sont déplacés immédiatement vers
+// "Archives suggestions" afin d'être visibles tout de suite dans les archives.
 
 const SUGGESTIONS_ARCHIVE_SHEET_NAME = 'Archives suggestions';
 const SUGGESTIONS_TERMINAL_STATUSES = ['Terminé','Non retenu'];
-const SUGGESTIONS_ARCHIVE_DELAY_MS = 24 * 60 * 60 * 1000;
 const SUGGESTIONS_ARCHIVE_PROP_PREFIX = 'suggestionsAdmin:terminal:';
 
 function suggestionSeason_(date) {
@@ -40,14 +39,14 @@ function suggestionKey_(rowValues) {
   return bytes.map(function(b){ return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('').slice(0,24);
 }
 
+// Appelée après un changement de statut : un statut terminal archive immédiatement.
 function markSuggestionTerminal_(sh,row,status) {
-  const props = PropertiesService.getScriptProperties();
   const vals = sh.getRange(row,1,1,9).getValues()[0];
-  const key = SUGGESTIONS_ARCHIVE_PROP_PREFIX + suggestionKey_(vals);
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty(SUGGESTIONS_ARCHIVE_PROP_PREFIX + suggestionKey_(vals));
   if (SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0) {
-    if (!props.getProperty(key)) props.setProperty(key,String(Date.now()));
-  } else {
-    props.deleteProperty(key);
+    archiveRow_(sh,row,'status');
+    props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(sh.getLastRow()));
   }
 }
 
@@ -83,6 +82,7 @@ function listSuggestionArchivesApp_() {
 }
 
 function archiveRow_(sh,row,reason) {
+  if(row < 2 || row > sh.getLastRow()) return;
   const vals=sh.getRange(row,1,1,9).getValues()[0];
   if(!vals.some(function(v){return String(v||'').trim();}))return;
   const season=suggestionSeason_(suggestionDate_(vals[4]));
@@ -92,18 +92,13 @@ function archiveRow_(sh,row,reason) {
 }
 
 function archiveDueSuggestionsApp_() {
-  const sh=suggestionsAdminSheet_(),props=PropertiesService.getScriptProperties(),now=Date.now(),current=suggestionSeason_(new Date());
+  const sh=suggestionsAdminSheet_(),current=suggestionSeason_(new Date());
   for(let row=sh.getLastRow();row>=2;row--){
     const vals=sh.getRange(row,1,1,9).getValues()[0];
     if(!vals.some(function(v){return String(v||'').trim();}))continue;
     const status=String(vals[3]||'').trim(),season=suggestionSeason_(suggestionDate_(vals[4]));
     if(season!==current){archiveRow_(sh,row,'season');continue;}
-    if(SUGGESTIONS_TERMINAL_STATUSES.indexOf(status)>=0){
-      const key=SUGGESTIONS_ARCHIVE_PROP_PREFIX+suggestionKey_(vals);
-      let since=Number(props.getProperty(key)||0);
-      if(!since){since=now;props.setProperty(key,String(since));}
-      if(now-since>=SUGGESTIONS_ARCHIVE_DELAY_MS)archiveRow_(sh,row,'status');
-    }
+    if(SUGGESTIONS_TERMINAL_STATUSES.indexOf(status)>=0){archiveRow_(sh,row,'status');}
   }
   PropertiesService.getScriptProperties().setProperty(SUGGESTIONS_LAST_ROW_PROP,String(sh.getLastRow()));
   return {ok:true};
