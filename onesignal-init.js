@@ -28,12 +28,30 @@
       }
       if(!id&&bound){try{await OneSignal.logout()}catch(_){} bound=''}
     }
-    await syncIdentity();
-    window.addEventListener('pageshow',syncIdentity);
-    window.addEventListener('storage',syncIdentity);
-    window.addEventListener('horticulture-users-synced',syncIdentity);
+
+    let permissionArmed=false;
+    function armPermission(){
+      if(permissionArmed||!userId()||!('Notification' in window)||Notification.permission!=='default')return;
+      permissionArmed=true;
+      const ask=async()=>{
+        document.removeEventListener('pointerdown',ask,true);
+        document.removeEventListener('keydown',ask,true);
+        try{
+          await OneSignal.Notifications.requestPermission();
+          window.dispatchEvent(new CustomEvent('horticulture-notification-permission',{detail:{permission:Notification.permission}}));
+        }catch(e){console.warn('OneSignal permission',e)}
+      };
+      document.addEventListener('pointerdown',ask,true);
+      document.addEventListener('keydown',ask,true);
+    }
+
+    async function syncAll(){await syncIdentity();armPermission()}
+    await syncAll();
+    window.addEventListener('pageshow',syncAll);
+    window.addEventListener('storage',syncAll);
+    window.addEventListener('horticulture-users-synced',syncAll);
     document.addEventListener('click',syncIdentity,true);
     document.addEventListener('submit',syncIdentity,true);
-    window.HorticultureOneSignal={syncIdentity,userId};
+    window.HorticultureOneSignal={syncIdentity,armPermission,userId};
   });
 })();
