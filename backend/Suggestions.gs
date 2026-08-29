@@ -16,10 +16,7 @@ function doGet(e) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || '').trim();
     if (action === 'listSuggestions') return json_(listSuggestionsApp_());
-    if (action === 'listSuggestionArchives') {
-      detectNewSuggestionsApp_(suggestionsAdminSheet_());
-      return json_(listSuggestionArchivesApp_());
-    }
+    if (action === 'listSuggestionArchives') return json_(listSuggestionArchivesApp_());
     if (action === 'ping') return json_({ok:true,service:'suggestions-admin',season:typeof suggestionSeason_ === 'function' ? suggestionSeason_(new Date()) : ''});
     return json_({ok:false,error:'Action GET inconnue.'});
   } catch (err) {
@@ -61,23 +58,51 @@ function suggestionsAdminRow_(sh, row) {
   };
 }
 
+// Chemin de lecture rapide pour l'application : aucune notification, aucun archivage,
+// aucune lecture cellule par cellule. Les déclencheurs s'occupent de la surveillance
+// et archiveDueSuggestionsApp_ est exécuté par le déclencheur périodique.
 function listSuggestionsApp_() {
   const sh = suggestionsAdminSheet_();
-  detectNewSuggestionsApp_(sh);
-  if (typeof archiveDueSuggestionsApp_ === 'function') archiveDueSuggestionsApp_();
+  const last = sh.getLastRow();
   const currentSeason = typeof suggestionSeason_ === 'function' ? suggestionSeason_(new Date()) : '';
-  const out = [], last = sh.getLastRow();
-  for (let row = 2; row <= last; row++) {
-    const s = suggestionsAdminRow_(sh,row);
-    if (!s.title && !s.text) continue;
+  if (last < 2) return {ok:true,suggestions:[],season:currentSeason};
+
+  const range = sh.getRange(2, 1, last - 1, 9);
+  const display = range.getDisplayValues();
+  const raw = range.getValues();
+  const out = [];
+
+  for (let i = 0; i < display.length; i++) {
+    const v = display[i];
+    const title = String(v[0] || '').trim();
+    const text = String(v[8] || '').trim();
+    if (!title && !text) continue;
+
+    const status = String(v[3] || '').trim() || 'Pas commencé';
+    let season = '';
     if (typeof suggestionSeason_ === 'function' && typeof suggestionDate_ === 'function') {
-      const season = suggestionSeason_(suggestionDate_(sh.getRange(row,5).getValue()));
-      s.season = season;
+      season = suggestionSeason_(suggestionDate_(raw[i][4]));
       if (season !== currentSeason) continue;
-      if (typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' && SUGGESTIONS_TERMINAL_STATUSES.indexOf(s.status) >= 0) continue;
+      if (typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' && SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0) continue;
     }
-    out.push(s);
+
+    const row = i + 2;
+    out.push({
+      id:String(row), row:row,
+      title:title,
+      category:String(v[1] || '').trim(),
+      name:String(v[2] || '').trim(),
+      status:status,
+      date:String(v[4] || '').trim(),
+      email:String(v[5] || '').trim(),
+      summary:String(v[6] || '').trim(),
+      place:String(v[7] || '').trim(),
+      text:text,
+      source:'Site',
+      season:season
+    });
   }
+
   out.reverse();
   return {ok:true,suggestions:out,season:currentSeason};
 }
