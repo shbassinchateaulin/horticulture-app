@@ -261,7 +261,7 @@ function createAdminSuggestionNotification_(s) {
       type:'suggestion',
       title:'Nouvelle suggestion',
       message:s.title || s.summary || s.text,
-      targetPermissions:['suggestions'],
+      targetPermissions:['suggestions','superadmin'],
       data:{
         suggestionId:String(s.id),
         row:Number(s.row || 0),
