@@ -1,11 +1,24 @@
 (()=>{
-const SEEN='horticulture-notification-onboarding-seen-v1';
-function standalone(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}
+function logged(){return !!(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1'))}
 function supported(){return 'Notification' in window&&'serviceWorker' in navigator}
-function css(){if(document.getElementById('notif-onboarding-style'))return;const s=document.createElement('style');s.id='notif-onboarding-style';s.textContent=`.notifOb{position:fixed;inset:0;z-index:999999;background:#10241db8;backdrop-filter:blur(8px);display:grid;place-items:center;padding:22px}.notifCard{width:min(430px,100%);background:#fff;border-radius:25px;padding:28px 25px 22px;box-shadow:0 25px 80px #00170e55;text-align:center;color:#173c30}.notifBell{width:68px;height:68px;border-radius:22px;margin:0 auto 17px;display:grid;place-items:center;background:#e7f5ec;font-size:32px}.notifCard h2{margin:0 0 9px;font-size:24px;color:#07583f}.notifCard p{margin:0 auto 21px;max-width:350px;color:#617168;font-size:14px;line-height:1.55}.notifAllow{width:100%;border:0;border-radius:13px;background:#08744f;color:white;font-weight:800;font-size:15px;padding:14px;cursor:pointer}.notifLater{border:0;background:transparent;color:#6a7770;font-weight:700;padding:13px 18px 4px;cursor:pointer}.notifNote{font-size:11px!important;color:#89938e!important;margin-top:10px!important;margin-bottom:0!important}.appDark .notifCard{background:#1d2923;color:#edf5f0}.appDark .notifCard h2{color:#b9ead1}.appDark .notifCard p{color:#b2c1b9}.appDark .notifBell{background:#294437}`;document.head.appendChild(s)}
-function remove(){document.getElementById('notificationOnboarding')?.remove()}
-async function ask(){localStorage.setItem(SEEN,'1');if(!supported()){remove();return}try{const permission=await Notification.requestPermission();const settings=JSON.parse(localStorage.getItem('horticulture-app-settings-v1')||'{}');settings.notifications=permission==='granted';localStorage.setItem('horticulture-app-settings-v1',JSON.stringify(settings));window.dispatchEvent(new CustomEvent('horticulture-notification-permission',{detail:{permission}}))}catch(e){console.warn('Notification permission',e)}remove()}
-function show(){if(document.getElementById('notificationOnboarding')||localStorage.getItem(SEEN))return;if(!standalone())return;if(!supported())return;if(Notification.permission!=='default'){localStorage.setItem(SEEN,'1');return}css();const d=document.createElement('div');d.id='notificationOnboarding';d.className='notifOb';d.innerHTML=`<div class="notifCard"><div class="notifBell">🔔</div><h2>Restez informé</h2><p>Activez les notifications pour être averti des informations importantes de l’association : nouvelles suggestions, inscriptions, publications et actions nécessitant votre attention.</p><button class="notifAllow">Activer les notifications</button><button class="notifLater">Plus tard</button><p class="notifNote">Vous pourrez modifier ce choix plus tard dans les paramètres de l’application.</p></div>`;document.body.appendChild(d);d.querySelector('.notifAllow').onclick=ask;d.querySelector('.notifLater').onclick=()=>{localStorage.setItem(SEEN,'1');remove()}}
-function ready(){if(!document.body)return;const logged=localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1');if(logged)setTimeout(show,650)}
-window.addEventListener('pageshow',ready);window.addEventListener('horticulture-users-synced',ready);setTimeout(ready,1200);
+let armed=false;
+async function request(){
+  if(!logged()||!supported()||Notification.permission!=='default')return;
+  try{
+    window.OneSignalDeferred=window.OneSignalDeferred||[];
+    window.OneSignalDeferred.push(async OneSignal=>{
+      try{await OneSignal.Notifications.requestPermission()}catch(e){console.warn('OneSignal permission',e)}
+    });
+  }catch(e){console.warn('Notification permission',e)}
+}
+function arm(){
+  if(armed||!logged()||!supported()||Notification.permission!=='default')return;
+  armed=true;
+  const once=()=>{document.removeEventListener('pointerdown',once,true);document.removeEventListener('keydown',once,true);request()};
+  document.addEventListener('pointerdown',once,true);
+  document.addEventListener('keydown',once,true);
+}
+window.addEventListener('pageshow',arm);
+window.addEventListener('horticulture-users-synced',arm);
+setTimeout(arm,600);
 })();
