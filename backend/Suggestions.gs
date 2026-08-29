@@ -23,8 +23,6 @@ function doGet(e) {
     }
 
     if (action === 'listSuggestionArchives') {
-      // On détecte d'abord les nouvelles lignes afin de ne jamais perdre une notification,
-      // puis on effectue l'entretien / archivage.
       detectNewSuggestionsApp_(suggestionsAdminSheet_());
       return json_(listSuggestionArchivesApp_());
     }
@@ -72,6 +70,10 @@ function doPost(e) {
       return json_(deleteArchivedSuggestionNowApp_(body.id || body.row || ''));
     }
 
+    if (body.action === 'restoreArchivedSuggestion') {
+      return json_(restoreArchivedSuggestionApp_(body.id || body.row || ''));
+    }
+
     return json_({ok:false,error:'Action POST inconnue.'});
   } catch (err) {
     return json_({ok:false,error:String(err && err.message ? err.message : err)});
@@ -105,9 +107,6 @@ function suggestionsAdminRow_(sh, row) {
 
 function listSuggestionsApp_() {
   const sh = suggestionsAdminSheet_();
-
-  // Très important : détection AVANT tout archivage ou suppression de lignes,
-  // sinon une nouvelle suggestion du site pourrait être prise pour une simple nouvelle baseline.
   detectNewSuggestionsApp_(sh);
 
   if (typeof archiveDueSuggestionsApp_ === 'function') {
@@ -125,10 +124,6 @@ function listSuggestionsApp_() {
     const s = suggestionsAdminRow_(sh, row);
     if (!s.title && !s.text) continue;
 
-    // Si le module saisonnier est présent :
-    // - seules les suggestions de la saison active sont visibles ;
-    // - Terminé / Non retenu disparaissent immédiatement de l'écran,
-    //   tout en restant 24 h dans le Google Sheet avant archivage.
     if (typeof suggestionSeason_ === 'function' && typeof suggestionDate_ === 'function') {
       const rawDate = sh.getRange(row,5).getValue();
       const season = suggestionSeason_(suggestionDate_(rawDate));
@@ -185,11 +180,20 @@ function updateSuggestionApp_(o) {
 
   SpreadsheetApp.flush();
 
-  // Démarre / enlève le délai de 24 h si le statut devient
-  // Terminé / Non retenu ou revient à un statut actif.
+  const status = Object.prototype.hasOwnProperty.call(o,'status')
+    ? String(o.status || '').trim()
+    : '';
+  const willArchive = status &&
+    typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' &&
+    SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0;
+
   if (Object.prototype.hasOwnProperty.call(o,'status') &&
       typeof markSuggestionTerminal_ === 'function') {
-    markSuggestionTerminal_(sh,row,String(o.status || '').trim());
+    markSuggestionTerminal_(sh,row,status);
+  }
+
+  if (willArchive) {
+    return {ok:true,archived:true,status:status};
   }
 
   return {ok:true,suggestion:suggestionsAdminRow_(sh,row)};
@@ -206,9 +210,6 @@ function updateSuggestionStatusApp_(id,status) {
 function addSuggestionApp_(o) {
   o = o || {};
   const sh = suggestionsAdminSheet_();
-
-  // Avant un ajout manuel, on détecte d'abord les éventuelles nouvelles lignes
-  // déposées par le formulaire public afin de ne pas les sauter.
   detectNewSuggestionsApp_(sh);
 
   const title = String(o.title || o.titre || '').trim();
@@ -236,8 +237,6 @@ function addSuggestionApp_(o) {
   SpreadsheetApp.flush();
   const row = sh.getLastRow();
 
-  // Une suggestion ajoutée depuis l'administration est déjà connue.
-  // Elle ne doit pas générer la notification "nouvelle suggestion du site".
   PropertiesService.getScriptProperties().setProperty(
     SUGGESTIONS_LAST_ROW_PROP,
     String(row)
@@ -245,6 +244,11 @@ function addSuggestionApp_(o) {
 
   if (typeof markSuggestionTerminal_ === 'function') {
     markSuggestionTerminal_(sh,row,status);
+  }
+
+  if (typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' &&
+      SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0) {
+    return {ok:true,archived:true,status:status};
   }
 
   return {ok:true,suggestion:suggestionsAdminRow_(sh,row)};
@@ -292,8 +296,6 @@ function detectNewSuggestionsApp_(sh) {
   const raw = props.getProperty(SUGGESTIONS_LAST_ROW_PROP);
 
   if (raw === null) {
-    // Première exécution : on prend l'existant comme référence.
-    // Aucune ancienne suggestion ne déclenche une notification.
     props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(last));
     return {ok:true,newCount:0,initialized:true};
   }
@@ -318,8 +320,6 @@ function detectNewSuggestionsApp_(sh) {
   return {ok:true,newCount:count};
 }
 
-// À exécuter UNE SEULE FOIS manuellement après avoir collé / mis à jour le code.
-// Cela autorise le script et crée une vérification automatique toutes les minutes.
 function installerSurveillanceSuggestionsApp() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers
@@ -335,7 +335,6 @@ function installerSurveillanceSuggestionsApp() {
     String(suggestionsAdminSheet_().getLastRow())
   );
 
-  // Crée immédiatement l'onglet d'archives s'il n'existe pas encore.
   if (typeof suggestionsArchiveSheet_ === 'function') {
     suggestionsArchiveSheet_();
   }
@@ -353,7 +352,6 @@ function installerSurveillanceSuggestionsApp() {
 }
 
 function surveillerSuggestionsApp() {
-  // Toujours détecter AVANT l'entretien, car l'entretien peut déplacer/supprimer des lignes.
   const detection = detectNewSuggestionsApp_(suggestionsAdminSheet_());
 
   if (typeof archiveDueSuggestionsApp_ === 'function') {
