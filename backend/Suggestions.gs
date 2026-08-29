@@ -324,11 +324,14 @@ function installerSurveillanceSuggestionsApp() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers
     .filter(function(t){
-      return t.getHandlerFunction() === 'surveillerSuggestionsApp';
+      const fn = t.getHandlerFunction();
+      return fn === 'surveillerSuggestionsApp' || fn === 'surveillerSuggestionsEditionApp';
     })
     .forEach(function(t){
       ScriptApp.deleteTrigger(t);
     });
+
+  const ss = SpreadsheetApp.openById(SUGGESTIONS_SPREADSHEET_ID);
 
   PropertiesService.getScriptProperties().setProperty(
     SUGGESTIONS_LAST_ROW_PROP,
@@ -339,6 +342,14 @@ function installerSurveillanceSuggestionsApp() {
     suggestionsArchiveSheet_();
   }
 
+  // Détection immédiate lors d'une saisie, d'un collage ou d'une modification manuelle du Sheet.
+  ScriptApp
+    .newTrigger('surveillerSuggestionsEditionApp')
+    .forSpreadsheet(ss)
+    .onEdit()
+    .create();
+
+  // Filet de sécurité : si une ligne est ajoutée par un autre mécanisme qui ne déclenche pas onEdit.
   ScriptApp
     .newTrigger('surveillerSuggestionsApp')
     .timeBased()
@@ -347,8 +358,34 @@ function installerSurveillanceSuggestionsApp() {
 
   return {
     ok:true,
+    instant:true,
+    fallbackMinutes:1,
     season:typeof suggestionSeason_ === 'function' ? suggestionSeason_(new Date()) : ''
   };
+}
+
+function surveillerSuggestionsEditionApp(e) {
+  try {
+    const range = e && e.range;
+    const sh = range && range.getSheet ? range.getSheet() : null;
+
+    // Ignore les modifications faites dans d'autres onglets du classeur.
+    if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) {
+      return {ok:true,ignored:true};
+    }
+
+    // Ignore l'en-tête et les éditions totalement hors des 9 colonnes utilisées.
+    if (range) {
+      if (range.getLastRow() < 2 || range.getColumn() > 9 || range.getLastColumn() < 1) {
+        return {ok:true,ignored:true};
+      }
+    }
+
+    return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
+  } catch (err) {
+    console.warn('Surveillance immédiate Suggestions impossible : '+err);
+    return {ok:false,error:String(err)};
+  }
 }
 
 function surveillerSuggestionsApp() {
