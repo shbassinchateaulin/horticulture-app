@@ -22,7 +22,23 @@ function notificationVisibleForUser_(n,u){
   if(perms.includes('superadmin')&&(role.includes('superadmin')||fn.includes('superadmin')||username==='superadmin'))return true;
   return false;
 }
-function createNotification_(o){o=o||{};const id=Utilities.getUuid(),created=new Date().toISOString();notifSheet_().appendRow([id,String(o.type||'info'),String(o.title||'Notification'),String(o.message||''),notifCsv_(o.targetUsers).join(','),notifCsv_(o.targetPermissions).join(','),created,String(o.expiresAt||''),JSON.stringify(o.data||{})]);return{ok:true,id:id,createdAt:created}}
+function resolveNotificationTargetUsers_(o){
+  o=o||{};
+  const explicit=notifCsv_(o.targetUsers).map(String);
+  if(explicit.includes('*'))return ['*'];
+  const perms=notifCsv_(o.targetPermissions).map(notifKey_).filter(Boolean);
+  if(!perms.length)return Array.from(new Set(explicit));
+  const ids=listUsers_().filter(u=>u.active&&notificationVisibleForUser_({targetUsers:explicit,targetPermissions:perms},u)).map(u=>String(u.id));
+  return Array.from(new Set(explicit.concat(ids)));
+}
+function createNotification_(o){
+  o=o||{};
+  const id=Utilities.getUuid(),created=new Date().toISOString();
+  const targetUsers=resolveNotificationTargetUsers_(o);
+  const targetPermissions=notifCsv_(o.targetPermissions);
+  notifSheet_().appendRow([id,String(o.type||'info'),String(o.title||'Notification'),String(o.message||''),targetUsers.join(','),targetPermissions.join(','),created,String(o.expiresAt||''),JSON.stringify(o.data||{})]);
+  return{ok:true,id:id,createdAt:created,targetUsers:targetUsers};
+}
 function listNotificationsForUser_(userId){cleanupNotifications_();const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable ou inactif'};const sh=notifSheet_(),rows=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1),readSh=notifReadSheet_(),reads=readSh.getLastRow()<2?[]:readSh.getDataRange().getValues().slice(1),readMap={};reads.forEach(r=>{if(String(r[1])===String(userId))readMap[String(r[0])]=String(r[2]||'')});const now=Date.now(),notifications=rows.filter(r=>r[0]).map(r=>({id:String(r[0]),type:String(r[1]||'info'),title:String(r[2]||''),message:String(r[3]||''),targetUsers:String(r[4]||''),targetPermissions:String(r[5]||''),createdAt:String(r[6]||''),expiresAt:String(r[7]||''),data:String(r[8]||'')})).filter(n=>(!n.expiresAt||Date.parse(n.expiresAt)>now)&&notificationVisibleForUser_(n,u)).map(n=>{let data={};try{data=JSON.parse(n.data||'{}')}catch{}return{id:n.id,type:n.type,title:n.title,message:n.message,createdAt:n.createdAt,data:data,read:!!readMap[n.id],readAt:readMap[n.id]||''}}).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));return{ok:true,notifications:notifications}}
 function markNotificationRead_(notificationId,userId){const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable ou inactif'};const visible=listNotificationsForUser_(userId);if(!visible.ok||!visible.notifications.some(n=>n.id===String(notificationId)))return{ok:false,error:'Notification inaccessible'};const sh=notifReadSheet_(),v=sh.getLastRow()<2?[]:sh.getDataRange().getValues();for(let i=1;i<v.length;i++)if(String(v[i][0])===String(notificationId)&&String(v[i][1])===String(userId)){const at=new Date().toISOString();sh.getRange(i+1,3).setValue(at);return{ok:true,readAt:at}}const at=new Date().toISOString();sh.appendRow([String(notificationId),String(userId),at]);return{ok:true,readAt:at}}
 function markAllNotificationsRead_(userId){const r=listNotificationsForUser_(userId);if(!r.ok)return r;r.notifications.filter(n=>!n.read).forEach(n=>markNotificationRead_(n.id,userId));return{ok:true}}
