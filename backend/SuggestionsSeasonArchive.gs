@@ -39,7 +39,6 @@ function suggestionKey_(rowValues) {
   return bytes.map(function(b){ return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join('').slice(0,24);
 }
 
-// Appelée après un changement de statut : un statut terminal archive immédiatement.
 function markSuggestionTerminal_(sh,row,status) {
   const vals = sh.getRange(row,1,1,9).getValues()[0];
   const props = PropertiesService.getScriptProperties();
@@ -104,6 +103,44 @@ function archiveDueSuggestionsApp_() {
   return {ok:true};
 }
 
+function restoreArchivedSuggestionApp_(id) {
+  const archiveRow = Number(String(id || '').replace('archive-',''));
+  const archiveSh = suggestionsArchiveSheet_();
+  if (!Number.isInteger(archiveRow) || archiveRow < 2 || archiveRow > archiveSh.getLastRow()) {
+    return {ok:false,error:'Archive introuvable.'};
+  }
+
+  const vals = archiveSh.getRange(archiveRow,1,1,11).getValues()[0];
+  if (!vals.slice(0,9).some(function(v){return String(v||'').trim();})) {
+    return {ok:false,error:'Archive vide.'};
+  }
+
+  const activeSh = suggestionsAdminSheet_();
+  const restored = vals.slice(0,9);
+
+  // Une archive restaurée redevient une suggestion active.
+  // On la remet en "Pas commencé" et à la date actuelle pour qu'elle appartienne
+  // à la saison active et ne soit pas immédiatement ré-archivée.
+  restored[3] = 'Pas commencé';
+  restored[4] = new Date();
+
+  activeSh.appendRow(restored);
+  SpreadsheetApp.flush();
+  const newRow = activeSh.getLastRow();
+  archiveSh.deleteRow(archiveRow);
+
+  PropertiesService.getScriptProperties().setProperty(
+    SUGGESTIONS_LAST_ROW_PROP,
+    String(newRow)
+  );
+
+  return {
+    ok:true,
+    restored:true,
+    suggestion:suggestionsAdminRow_(activeSh,newRow)
+  };
+}
+
 function deleteSuggestionNowApp_(id) {
   const row=Number(id||0),sh=suggestionsAdminSheet_();
   if(!Number.isInteger(row)||row<2||row>sh.getLastRow())return {ok:false,error:'Suggestion introuvable.'};
@@ -120,7 +157,6 @@ function deleteArchivedSuggestionNowApp_(id) {
   sh.deleteRow(row);return {ok:true};
 }
 
-// À appeler par le déclencheur existant surveillerSuggestionsApp().
 function entretienSuggestionsApp_(){
   archiveDueSuggestionsApp_();
   return detectNewSuggestionsApp_(suggestionsAdminSheet_());
