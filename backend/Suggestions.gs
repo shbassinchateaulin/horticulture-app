@@ -131,20 +131,26 @@ function updateSuggestionStatusApp_(id,status) {
 function addSuggestionApp_(o) {
   o = o || {};
   const sh = suggestionsAdminSheet_();
-  detectNewSuggestionsApp_(sh);
-  const title = String(o.title || o.titre || '').trim(), text = String(o.text || o.suggestion || '').trim();
-  if (!title && !text) return {ok:false,error:'La proposition est vide.'};
-  const requestedStatus = String(o.status || '').trim();
-  const status = SUGGESTIONS_STATUSES.indexOf(requestedStatus) >= 0 ? requestedStatus : 'Pas commencé';
-  sh.appendRow([title || text.substring(0,80),String(o.category || o.nature || '').trim(),String(o.name || '').trim(),status,new Date(),String(o.email || '').trim(),String(o.summary || '').trim(),String(o.place || '').trim(),text]);
-  SpreadsheetApp.flush();
-  const row = sh.getLastRow();
-  const s = suggestionsAdminRow_(sh,row);
-  const notif = createAdminSuggestionNotification_(s);
-  if (notif.ok) PropertiesService.getScriptProperties().setProperty(SUGGESTIONS_LAST_ROW_PROP,String(row));
-  if (typeof markSuggestionTerminal_ === 'function') markSuggestionTerminal_(sh,row,status);
-  if (typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' && SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0) return {ok:true,archived:true,status:status,notification:notif};
-  return {ok:true,suggestion:s,notification:notif};
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return {ok:false,error:'Une autre suggestion est en cours de traitement.'};
+  try {
+    detectNewSuggestionsApp_(sh);
+    const title = String(o.title || o.titre || '').trim(), text = String(o.text || o.suggestion || '').trim();
+    if (!title && !text) return {ok:false,error:'La proposition est vide.'};
+    const requestedStatus = String(o.status || '').trim();
+    const status = SUGGESTIONS_STATUSES.indexOf(requestedStatus) >= 0 ? requestedStatus : 'Pas commencé';
+    sh.appendRow([title || text.substring(0,80),String(o.category || o.nature || '').trim(),String(o.name || '').trim(),status,new Date(),String(o.email || '').trim(),String(o.summary || '').trim(),String(o.place || '').trim(),text]);
+    SpreadsheetApp.flush();
+    const row = sh.getLastRow();
+    const s = suggestionsAdminRow_(sh,row);
+    const notif = createAdminSuggestionNotification_(s);
+    if (notif.ok) PropertiesService.getScriptProperties().setProperty(SUGGESTIONS_LAST_ROW_PROP,String(row));
+    if (typeof markSuggestionTerminal_ === 'function') markSuggestionTerminal_(sh,row,status);
+    if (typeof SUGGESTIONS_TERMINAL_STATUSES !== 'undefined' && SUGGESTIONS_TERMINAL_STATUSES.indexOf(status) >= 0) return {ok:true,archived:true,status:status,notification:notif};
+    return {ok:true,suggestion:s,notification:notif};
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function createAdminSuggestionNotification_(s) {
@@ -187,10 +193,17 @@ function detectNewSuggestionsApp_(sh) {
       return {ok:false,newCount:count,failedRow:row,error:sent.error};
     }
     seen = row;
+    props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(seen));
     count++;
   }
-  props.setProperty(SUGGESTIONS_LAST_ROW_PROP,String(seen));
   return {ok:true,newCount:count,lastSeenRow:seen};
+}
+
+function withSuggestionWatchLock_(fn) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return {ok:true,skipped:true,reason:'already-running'};
+  try { return fn(); }
+  finally { lock.releaseLock(); }
 }
 
 function installerSurveillanceSuggestionsApp() {
@@ -214,38 +227,38 @@ function installerSurveillanceSuggestionsApp() {
 }
 
 function surveillerSuggestionsEditionApp(e) {
-  try {
-    const range = e && e.range, sh = range && range.getSheet ? range.getSheet() : null;
-    if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) return {ok:true,ignored:true};
-    if (range && (range.getLastRow() < 2 || range.getColumn() > 9 || range.getLastColumn() < 1)) return {ok:true,ignored:true};
-    return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
-  } catch (err) {
-    console.warn('Surveillance immédiate Suggestions impossible : '+err);
-    return {ok:false,error:String(err)};
-  }
+  return withSuggestionWatchLock_(function(){
+    try {
+      const range = e && e.range, sh = range && range.getSheet ? range.getSheet() : null;
+      if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) return {ok:true,ignored:true};
+      if (range && (range.getLastRow() < 2 || range.getColumn() > 9 || range.getLastColumn() < 1)) return {ok:true,ignored:true};
+      return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
+    } catch (err) {
+      console.warn('Surveillance immédiate Suggestions impossible : '+err);
+      return {ok:false,error:String(err)};
+    }
+  });
 }
 
 function surveillerSuggestionsFormulaireApp(e) {
-  try {
-    const range = e && e.range, sh = range && range.getSheet ? range.getSheet() : null;
-    if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) return {ok:true,ignored:true};
-    return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
-  } catch (err) {
-    console.warn('Surveillance formulaire Suggestions impossible : '+err);
-    return {ok:false,error:String(err)};
-  }
+  return withSuggestionWatchLock_(function(){
+    try {
+      const range = e && e.range, sh = range && range.getSheet ? range.getSheet() : null;
+      if (sh && sh.getName() !== SUGGESTIONS_SHEET_NAME) return {ok:true,ignored:true};
+      return detectNewSuggestionsApp_(sh || suggestionsAdminSheet_());
+    } catch (err) {
+      console.warn('Surveillance formulaire Suggestions impossible : '+err);
+      return {ok:false,error:String(err)};
+    }
+  });
 }
 
 function surveillerSuggestionsApp() {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return {ok:true,skipped:true,reason:'already-running'};
-  try {
+  return withSuggestionWatchLock_(function(){
     const detection = detectNewSuggestionsApp_(suggestionsAdminSheet_());
     if (typeof archiveDueSuggestionsApp_ === 'function') archiveDueSuggestionsApp_();
     return detection;
-  } finally {
-    lock.releaseLock();
-  }
+  });
 }
 
 function diagnosticSurveillanceSuggestionsApp() {
