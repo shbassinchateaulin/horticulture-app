@@ -1,7 +1,7 @@
 (()=>{
 const PERM='consultation_ag';
 const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M8 12h3M8 16h3M14 8h2M14 12h2M14 16h2"/><path d="m8 8 .8.8L10.5 7"/></svg>`;
-let lastOpen=0;
+let lastOpen=0,saveClickLocked=false;
 function resetAGVisualState_(){
  document.body.classList.remove('agWorkspaceMode');
  document.getElementById('agConsultation')?.classList.remove('active');
@@ -31,6 +31,29 @@ function captureAG_(e){
  if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
  openAG();
 }
+function captureImmediateSave_(e){
+ const b=e.target.closest?.('#agConsultation [data-save],#agConsultation [data-save-bottom]');
+ if(!b)return;
+ if(saveClickLocked){
+   e.preventDefault();
+   e.stopPropagation();
+   if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
+   return;
+ }
+ saveClickLocked=true;
+ document.querySelectorAll('#agConsultation [data-save],#agConsultation [data-save-bottom]').forEach(x=>{
+   x.disabled=true;
+   x.setAttribute('aria-busy','true');
+   x.dataset.oldText=x.textContent||'';
+   x.textContent='Enregistré ✓';
+ });
+ // Le brouillon AG est déjà écrit localement à chaque modification. On donne donc
+ // une réponse visuelle immédiate et on revient à la vue AG sans attendre Sheets.
+ setTimeout(()=>{
+   try{window.HorticultureAG?.open?.()}catch(err){console.error('Ouverture après enregistrement AG',err)}
+   setTimeout(()=>{saveClickLocked=false},1200);
+ },0);
+}
 function wire(b){
  if(!b||b.dataset.agMobileOpen==='1')return;
  b.dataset.agMobileOpen='1';
@@ -45,7 +68,9 @@ document.addEventListener('click',e=>{
  if(document.body.classList.contains('agWorkspaceMode')||document.getElementById('agConsultation')?.classList.contains('active'))resetAGVisualState_();
 },true);
 // Capture au niveau window : avant les autres gestionnaires globaux de l'application.
-// C'est volontairement limité au bouton Consultation AG.
+// Le save est seulement verrouillé contre les doubles clics ; le gestionnaire AG natif
+// continue son enregistrement serveur en arrière-plan.
+window.addEventListener('click',captureImmediateSave_,true);
 window.addEventListener('touchend',captureAG_,{capture:true,passive:false});
 window.addEventListener('click',captureAG_,true);
 function add(){
