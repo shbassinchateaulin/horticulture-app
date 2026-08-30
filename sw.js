@@ -1,4 +1,4 @@
-const VERSION='v105-ag-direct-campaign';
+const VERSION='v106-ag-member-distribution';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -96,13 +96,14 @@ self.addEventListener('fetch',e=>{
     );
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
 
-    // Expose uniquement la navigation directe vers une fiche existante. Cela permet
-    // au petit module de navigation de garantir l'ouverture après Enregistrer sans
-    // déclencher « Continuer », qui renvoie volontairement vers le concepteur.
+    // Expose la navigation directe vers une fiche existante.
     source=source.replace(
       "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};",
-      "window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:32};"
+      "window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};"
     );
+
+    // Charge le module de diffusion des consultations aux adhérents.
+    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=1';s.async=true;document.head.appendChild(s)})();`;
 
     return new Response(source,{
       status:r.status,statusText:r.statusText,
