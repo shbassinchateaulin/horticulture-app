@@ -4,7 +4,7 @@ const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" 
 function add(){
  const grid=document.querySelector('#home .dashGrid');
  if(grid&&!grid.querySelector('[data-permission="'+PERM+'"]')){
-  const b=document.createElement('button');b.className='dashTile';b.dataset.permission=PERM;b.dataset.module='consultation-ag';b.innerHTML=`<span class="dashIcon">${agIcon}</span><b>Consultation AG</b><small>Préparer les questionnaires<br>de l’Assemblée générale</small>`;grid.insertBefore(b,grid.querySelector('#dashAccess')||null);
+  const b=document.createElement('button');b.className='dashTile';b.dataset.permission=PERM;b.dataset.module='consultation-ag';b.innerHTML=`<span class="dashIcon">${agIcon}</span><b>Consultation AG</b><small>Questionnaires, collecte<br>et dépouillement automatique</small>`;grid.insertBefore(b,grid.querySelector('#dashAccess')||null);
  }
  const list=document.querySelector('.dlist');
  if(list&&!list.querySelector('[data-permission="'+PERM+'"]')){
