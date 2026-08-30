@@ -220,15 +220,30 @@ async function saveCampaignConfirmed_(c){
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
 function getAnyCampaign(id){return db().campaigns.find(x=>x.id===id)||null}
-function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d);const pending=agPendingDeletes_();if(!pending.includes(String(id))){pending.push(String(id));agSetPendingDeletes_(pending)};agDeleteShared_(id)}
+function removeCampaign(id){
+  id=String(id||'');
+  const d=db();d.campaigns=d.campaigns.filter(x=>String(x.id)!==id);saveDB(d);
+  const loose=restoreDraft();if(loose&&String(loose.id)===id)clearDraft();
+  const pending=agPendingDeletes_();if(!pending.includes(id)){pending.push(id);agSetPendingDeletes_(pending)}
+  agDeleteShared_(id);
+}
+function continueDraft_(id){
+  const c=getAnyCampaign(id);if(!c)return home();
+  draft=JSON.parse(JSON.stringify(c));
+  draft.status='draft';
+  localStorage.setItem(DRAFT,JSON.stringify(draft));
+  builder();
+}
 function moveToTrash(id){const c=getAnyCampaign(id);if(!c||c.status!=='closed')return false;c.trashedAt=now();audit(c,'Mis à la corbeille');saveCampaign(c);return true}
 function restoreFromTrash(id){const c=getAnyCampaign(id);if(!c)return false;delete c.trashedAt;audit(c,'Restauré depuis la corbeille');saveCampaign(c);return true}
 function identityMode(c){return c?.settings?.identityMode||((c?.settings?.anonymous===true)?'anonymous':'optional')}
 function audit(c,action,detail=''){c.audit=c.audit||[];c.audit.unshift({id:uid('log'),at:now(),action,detail});c.audit=c.audit.slice(0,80)}
 function saveDraft(){
   if(!draft)return;
+  draft.status='draft';
   draft.updatedAt=now();
   localStorage.setItem(DRAFT,JSON.stringify(draft));
+  saveCampaign(draft,false);
   clearTimeout(agDraftPushTimer);
   agDraftPushTimer=setTimeout(()=>{
     const d=restoreDraft();
@@ -434,16 +449,17 @@ function home(fromShared=false){
         '<div class="agRowActions">'+
           (c.status!=='closed'?'<button class="agRowBtn" data-open>'+primary+'</button>':'')+
           (c.status!=='draft'?'<button class="agRowBtn" data-results>Résultats</button>':'')+
-          (c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
+          (c.status==='draft'?'<button class="agRowBtn trash" data-delete-draft title="Supprimer le brouillon">'+agSvg('trash')+'</button>':c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
         '</div>'+
       '</article>';
     }).join(''):'<div class="agRowEmpty">Aucun questionnaire dans cette catégorie.</div>';
 
     $$('[data-id]',listEl).forEach(row=>{
       const id=row.dataset.id;
-      $('[data-open]',row)?.addEventListener('click',()=>campaign(id,'overview'));
+      $('[data-open]',row)?.addEventListener('click',()=>{const c=getAnyCampaign(id);c?.status==='draft'?continueDraft_(id):campaign(id,'overview')});
       $('[data-results]',row)?.addEventListener('click',()=>campaign(id,'results'));
       $('[data-more]',row)?.addEventListener('click',()=>campaign(id,'settings'));
+      $('[data-delete-draft]',row)?.addEventListener('click',()=>{if(confirm('Supprimer définitivement ce brouillon ?')){removeCampaign(id);home()}});
       $('[data-trash]',row)?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home()}});
     });
   }
@@ -491,7 +507,7 @@ function newWizard(){
   const old=restoreDraft();
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
-    '<div class="agTop"><div><h1>Nouveau questionnaire AG</h1><p>Choisis comment créer le questionnaire. Le brouillon est sauvegardé automatiquement.</p></div></div>'+
+    '<div class="agTop"><div><h1>Nouveau questionnaire AG</h1><p>Choisis comment créer le questionnaire. Le brouillon est sauvegardé automatiquement dans la base partagée.</p></div></div>'+
     (old?'<div class="agNotice agWarn" style="margin-bottom:14px">Un brouillon non terminé existe. <button class="agBtn" data-resume style="margin-left:8px">Reprendre le brouillon</button></div>':'')+
     '<div class="agSourceGrid">'+
       '<button class="agSource" data-source="template"><strong>✨ Modèle professionnel</strong><small>Partir d’un questionnaire AG déjà structuré : satisfaction, activités, communication et améliorations.</small></button>'+
@@ -617,7 +633,7 @@ function builder(){
   if(!draft.sections?.length)draft.sections=[{id:uid('sec'),title:'Questionnaire',description:'',questions:[]}];
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
-    '<div class="agTop"><div><h1>Concepteur de questionnaire</h1><p>Structure par sections, types de réponses, options, aperçu et sauvegarde automatique du brouillon.</p></div><div class="agToolbar"><button class="agBtn" data-preview>Aperçu</button><button class="agPrimary" data-save>Enregistrer</button></div></div>'+
+    '<div class="agTop"><div><h1>Concepteur de questionnaire</h1><p>Structure par sections, types de réponses, options, aperçu et sauvegarde automatique du brouillon dans la base partagée.</p></div><div class="agToolbar"><button class="agBtn" data-preview>Aperçu</button><button class="agPrimary" data-save>Enregistrer</button></div></div>'+
     '<div class="agPanel"><div class="agTwo"><div class="agField"><label>Titre</label><input data-title value="'+esc(draft.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(draft.year||'')+'"></div></div><div class="agTwo"><div class="agField"><label>Identification du répondant</label><select data-identity><option value="optional" '+(identityMode(draft)==='optional'?'selected':'')+'>Prénom et nom facultatifs</option><option value="anonymous" '+(identityMode(draft)==='anonymous'?'selected':'')+'>Réponse totalement anonyme</option></select></div><div class="agField"><label>Statut initial</label><select data-status><option value="draft" '+(draft.status==='draft'?'selected':'')+'>Brouillon</option><option value="open" '+(draft.status==='open'?'selected':'')+'>Ouvert</option></select></div></div></div>'+
     '<div data-sections></div>'+
     '<div class="agToolbar"><button class="agBtn" data-add-section>＋ Ajouter une section</button><button class="agPrimary" data-save-bottom>Enregistrer le questionnaire</button></div>';
@@ -994,5 +1010,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:19};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:21};
 })();
