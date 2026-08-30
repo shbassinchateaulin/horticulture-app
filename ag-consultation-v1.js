@@ -1042,6 +1042,26 @@ function scheduleRouteRestore(tryNo=0){
   if(tryNo<10)setTimeout(()=>scheduleRouteRestore(tryNo+1),300);
 }
 
+function openAGSafe_(){
+  document.getElementById('drawer')?.classList.remove('open');
+  setAGActive_(true);
+  try{home();return true}
+  catch(first){
+    console.error('Ouverture Consultation AG',first);
+    setTimeout(()=>{
+      try{home()}
+      catch(second){
+        console.error('Ouverture Consultation AG — seconde tentative',second);
+        document.body.classList.add('agWorkspaceMode');
+        $('.view').forEach(v=>v.classList.remove('active'));
+        const r=root();r.classList.add('active');
+        r.innerHTML='<div class="agPanel"><h2>Consultation AG</h2><p>Le module n’a pas pu terminer son affichage. Recharge uniquement si ce message persiste.</p></div>';
+      }
+    },50);
+    return false;
+  }
+}
+
 function installNavigation(){
   if(document.documentElement.dataset.agProNavigation==='4')return;
   document.documentElement.dataset.agProNavigation='4';
@@ -1063,7 +1083,7 @@ function installNavigation(){
     e.preventDefault();
     document.getElementById('drawer')?.classList.remove('open');
     setTimeout(()=>{
-      try{home()}
+      try{openAGSafe_()}
       catch(err){
         console.error('Ouverture Consultation AG',err);
         document.body.classList.remove('agWorkspaceMode');
@@ -1086,5 +1106,5 @@ window.addEventListener('horticulture-users-synced',()=>{
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();setAGActive_(false);document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:26};
+window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:27};
 })();
