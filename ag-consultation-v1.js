@@ -184,6 +184,34 @@ function agRefreshSharedSoon_(){
     if(ok&&screen==='home'&&index===0)home(true)
   }),delay));
 }
+function agStateFingerprint_(){
+  return JSON.stringify(db().campaigns.map(c=>[
+    String(c?.id||''),String(c?.status||''),String(c?.updatedAt||''),
+    String(c?.trashedAt||''),Array.isArray(c?.responses)?c.responses.length:0
+  ]));
+}
+async function agRefreshVisible_(){
+  if(document.hidden||!document.body.classList.contains('agWorkspaceMode'))return false;
+  if(!['home','campaign','trash'].includes(screen))return false;
+  const before=agStateFingerprint_();
+  const ok=await agRefreshShared_(true);
+  if(!ok)return false;
+  const after=agStateFingerprint_();
+  if(before===after)return true;
+  if(screen==='home')home(true);
+  else if(screen==='trash')trashView();
+  else if(screen==='campaign'&&activeId){
+    const route=readRoute();
+    getCampaign(activeId)?campaign(activeId,route?.tab||'overview'):home(true);
+  }
+  return true;
+}
+function agLiveSyncLoop_(){
+  setTimeout(async()=>{
+    try{await agRefreshVisible_()}catch(e){console.warn('Actualisation Consultation AG',e)}
+    agLiveSyncLoop_();
+  },6000);
+}
 
 
 function db(){
@@ -316,7 +344,7 @@ function visualStyle(){
   '.agHomeShell{display:block;background:transparent}.agSide{display:none!important}.agMain{padding:0;min-width:0}'+
   '.agMainHead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:28px}.agMainHead h1{font-size:36px;line-height:1.05;margin:0 0 10px;letter-spacing:-.035em;color:#111d18}.agMainHead p{margin:0;color:#68766f;font-size:14px}.agMainActions{display:flex;gap:10px;align-items:center}.agTopAction{height:48px;min-height:48px;max-height:48px;box-sizing:border-box;border-radius:10px;border:1px solid #dbe2de;background:#fff;padding:0 16px;font-weight:700;font-size:12px;line-height:1;display:inline-flex;align-items:center;justify-content:center;gap:9px;vertical-align:middle;box-shadow:0 3px 10px #1731260b}.agTopAction.primary{background:linear-gradient(135deg,#087047,#07583f);color:#fff;border-color:#07583f;min-width:190px;justify-content:center}.agTopAction svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}.agTrashCount{min-width:20px;height:20px;border-radius:99px;background:#c52323;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}'+
   '.agStatGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:28px}.agStatCard{height:132px;background:#fff;border:1px solid #e2e8e4;border-radius:15px;box-shadow:0 8px 22px #17312609;display:flex;align-items:center;padding:18px 20px;gap:16px}.agStatIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.agStatIcon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.agStatIcon.green{background:#e5f3e8;color:#0b7a45}.agStatIcon.blue{background:#e4effd;color:#1769c2}.agStatIcon.orange{background:#fff0dc;color:#f08a13}.agStatIcon.purple{background:#eee6fb;color:#7146c7}.agStatText span{display:block;font-size:12px;color:#394940}.agStatText b{display:block;font-size:28px;line-height:1.05;margin:5px 0 4px;color:#111c17}.agStatText small{display:block;color:#6f7d76;font-size:11px}'+
-  '.agPageBack{border:0;background:transparent;color:#07583f;font-weight:800;font-size:12px;padding:2px 0 14px;display:inline-flex;align-items:center;gap:6px}.agPageBack:hover{text-decoration:underline}.agControls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}.agTabsHome{display:flex;background:#fff;border:1px solid #dfe6e2;border-radius:10px;overflow:hidden;box-shadow:0 3px 10px #17312607}.agTabsHome button{height:46px;min-width:106px;border:0;background:#fff;color:#24362d;font-size:12px;font-weight:600;position:relative}.agTabsHome button.active{color:#07583f}.agTabsHome button.active:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#0a704a}.agSearchArea{display:flex;gap:10px}.agSearchBox{width:250px;height:46px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;gap:10px;padding:0 13px}.agSearchBox svg{width:18px;height:18px;fill:none;stroke:#53675e;stroke-width:1.8}.agSearchBox input{border:0;outline:0;width:100%;font-size:12px;background:transparent}.agFilterBtn{height:46px;min-width:125px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:600}.agFilterBtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}'+
+  '.agPageBack{border:0;background:transparent;color:#07583f;font-weight:800;font-size:12px;padding:2px 0 14px;display:inline-flex;align-items:center;gap:6px}.agPageBack:hover{text-decoration:underline}.agRowMenuWrap{position:relative;display:inline-flex}.agRowMenu{position:absolute;right:0;top:42px;z-index:30;min-width:190px;background:#fff;border:1px solid #dfe6e2;border-radius:11px;padding:6px;box-shadow:0 12px 30px #17312622}.agRowMenu[hidden]{display:none!important}.agRowMenu button{width:100%;height:38px;border:0;background:transparent;border-radius:8px;text-align:left;padding:0 11px;font-size:12px;font-weight:700;color:#26382f}.agRowMenu button:hover{background:#f3f7f4}.agRowMenu button.danger{color:#b42318}.agControls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}.agTabsHome{display:flex;background:#fff;border:1px solid #dfe6e2;border-radius:10px;overflow:hidden;box-shadow:0 3px 10px #17312607}.agTabsHome button{height:46px;min-width:106px;border:0;background:#fff;color:#24362d;font-size:12px;font-weight:600;position:relative}.agTabsHome button.active{color:#07583f}.agTabsHome button.active:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#0a704a}.agSearchArea{display:flex;gap:10px}.agSearchBox{width:250px;height:46px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;gap:10px;padding:0 13px}.agSearchBox svg{width:18px;height:18px;fill:none;stroke:#53675e;stroke-width:1.8}.agSearchBox input{border:0;outline:0;width:100%;font-size:12px;background:transparent}.agFilterBtn{height:46px;min-width:125px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:600}.agFilterBtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}'+
   '.agList{display:grid;gap:9px}.agListRow{min-height:94px;background:#fff;border:1px solid #e3e8e5;border-radius:12px;box-shadow:0 5px 16px #17312607;display:grid;grid-template-columns:minmax(330px,1.7fr) 150px 130px auto;align-items:center;gap:18px;padding:14px 16px}.agRowTitle{display:flex;align-items:center;gap:14px;min-width:0}.agDocIcon{width:45px;height:45px;border-radius:50%;background:#e6f3e9;color:#0a7145;display:grid;place-items:center;flex:0 0 auto}.agDocIcon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8}.agRowTitleText{min-width:0}.agRowTitleText b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agRowTitleText small{display:block;color:#697870;font-size:11px;margin-top:5px}.agStatusPill{justify-self:start;border-radius:99px;padding:6px 11px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px}.agStatusPill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.agStatusPill.open{background:#e6f5e9;color:#116c40}.agStatusPill.closed{background:#fff0df;color:#c66312}.agStatusPill.draft{background:#eceeed;color:#303a35}.agResponseCell{font-size:12px;color:#26372f;line-height:1.5}.agResponseCell b{display:block;font-size:12px}.agRowActions{display:flex;gap:8px;justify-content:flex-end}.agRowBtn{height:40px;border:1px solid #d7dfda;border-radius:9px;background:#fff;padding:0 14px;font-size:11px;font-weight:700;color:#27372f}.agRowBtn:hover{background:#f8faf8}.agRowBtn.trash{width:42px;padding:0;color:#bc2b27;border-color:#e3a9a6}.agRowBtn.trash svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.agRowBtn.more{width:42px;padding:0;font-size:18px}.agRowEmpty{background:#fff;border:1px dashed #ced8d2;border-radius:12px;padding:42px;text-align:center;color:#6d7b74}'+
   '.agLocalFoot{text-align:center;color:#717f77;font-size:10px;padding:23px 0 3px}.agLocalFoot svg{width:13px;height:13px;vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.8}.agMobileBack{display:none}'+
   '@media(max-width:1180px){.agStatGrid{grid-template-columns:repeat(2,1fr)}.agListRow{grid-template-columns:minmax(270px,1fr) 120px 105px auto}}'+
@@ -449,7 +477,7 @@ function home(fromShared=false){
         '<div class="agRowActions">'+
           (c.status!=='closed'?'<button class="agRowBtn" data-open>'+primary+'</button>':'')+
           (c.status!=='draft'?'<button class="agRowBtn" data-results>Résultats</button>':'')+
-          (c.status==='draft'?'<button class="agRowBtn trash" data-delete-draft title="Supprimer le brouillon">'+agSvg('trash')+'</button>':c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
+          (c.status==='draft'?'<div class="agRowMenuWrap"><button class="agRowBtn more" data-draft-menu title="Plus d’options">•••</button><div class="agRowMenu" data-draft-pop hidden><button data-draft-settings>Paramètres</button><button class="danger" data-delete-draft>Supprimer le brouillon</button></div></div>':c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
         '</div>'+
       '</article>';
     }).join(''):'<div class="agRowEmpty">Aucun questionnaire dans cette catégorie.</div>';
@@ -459,9 +487,19 @@ function home(fromShared=false){
       $('[data-open]',row)?.addEventListener('click',()=>{const c=getAnyCampaign(id);c?.status==='draft'?continueDraft_(id):campaign(id,'overview')});
       $('[data-results]',row)?.addEventListener('click',()=>campaign(id,'results'));
       $('[data-more]',row)?.addEventListener('click',()=>campaign(id,'settings'));
-      $('[data-delete-draft]',row)?.addEventListener('click',()=>{if(confirm('Supprimer définitivement ce brouillon ?')){removeCampaign(id);home()}});
-      $('[data-trash]',row)?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home()}});
+      const menuBtn=$('[data-draft-menu]',row),menuPop=$('[data-draft-pop]',row);
+      menuBtn?.addEventListener('click',e=>{
+        e.stopPropagation();
+        const wasOpen=menuPop&&!menuPop.hidden;
+        $('[data-draft-pop]',listEl).forEach(x=>x.hidden=true);
+        if(menuPop)menuPop.hidden=wasOpen;
+      });
+      menuPop?.addEventListener('click',e=>e.stopPropagation());
+      $('[data-draft-settings]',row)?.addEventListener('click',()=>campaign(id,'settings'));
+      $('[data-delete-draft]',row)?.addEventListener('click',()=>{if(confirm('Supprimer définitivement ce brouillon ?')){removeCampaign(id);home(true)}});
+      $('[data-trash]',row)?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home(true)}});
     });
+    listEl.onclick=e=>{if(!e.target.closest?.('[data-draft-menu],[data-draft-pop]'))$('[data-draft-pop]',listEl).forEach(x=>x.hidden=true)};
   }
   renderRows();
 
@@ -920,7 +958,7 @@ function bar(label,count,total){
 function settings(c){
   $('[data-content]',root()).innerHTML=
     '<div class="agTwo"><div class="agPanel"><h3>Paramètres du questionnaire</h3><div class="agField"><label>Titre</label><input data-title value="'+esc(c.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(c.year||'')+'"></div><div class="agField"><label>Identification du répondant</label><select data-identity><option value="optional" '+(identityMode(c)==='optional'?'selected':'')+'>Prénom et nom facultatifs</option><option value="anonymous" '+(identityMode(c)==='anonymous'?'selected':'')+'>Réponse totalement anonyme</option></select></div><div class="agToolbar" style="margin-top:14px"><button class="agPrimary" data-save>Enregistrer</button><button class="agBtn" data-edit>Modifier les questions</button></div></div>'+
-    '<div class="agPanel"><h3>Maintenance</h3><div class="agNotice">Les données de ce module sont sauvegardées dans l’application. Utilise régulièrement « Exporter la sauvegarde » depuis l’accueil de Consultation AG.</div><div class="agToolbar" style="margin-top:14px"><button class="agBtn" data-dup>Dupliquer le questionnaire</button>'+(c.status==='closed'?'<button class="agDanger" data-trash-settings>🗑 Mettre à la corbeille</button>':'')+'</div></div></div>';
+    '<div class="agPanel"><h3>Maintenance</h3><div class="agNotice">Les questionnaires, brouillons et réponses sont synchronisés avec la base partagée Google Sheets.</div><div class="agToolbar" style="margin-top:14px"><button class="agBtn" data-dup>Dupliquer le questionnaire</button>'+(c.status==='closed'?'<button class="agDanger" data-trash-settings>🗑 Mettre à la corbeille</button>':'')+'</div></div></div>';
   $('[data-save]',root()).onclick=()=>{c.title=$('[data-title]',root()).value.trim()||c.title;c.year=$('[data-year]',root()).value;c.settings=c.settings||{};c.settings.identityMode=$('[data-identity]',root()).value;c.settings.anonymous=c.settings.identityMode==='anonymous';audit(c,'Paramètres modifiés');saveCampaign(c);campaign(c.id,'settings')};
   $('[data-edit]',root()).onclick=()=>{draft=JSON.parse(JSON.stringify(c));saveDraft();builder()};
   $('[data-dup]',root()).onclick=()=>{const copy=JSON.parse(JSON.stringify(c));copy.id=uid('ag');copy.title+=' — copie';copy.status='draft';copy.createdAt=now();copy.updatedAt=now();copy.responses=[];copy.audit=[];audit(copy,'Questionnaire dupliqué',c.title);saveCampaign(copy);campaign(copy.id,'overview')};
@@ -984,8 +1022,19 @@ function scheduleRouteRestore(tryNo=0){
 }
 
 function installNavigation(){
-  if(document.documentElement.dataset.agProNavigation==='2')return;
-  document.documentElement.dataset.agProNavigation='2';
+  if(document.documentElement.dataset.agProNavigation==='3')return;
+  document.documentElement.dataset.agProNavigation='3';
+
+  // Quand on quitte Consultation AG via la navigation normale de l'application,
+  // on retire d'abord proprement la vue AG afin d'éviter Accueil + AG affichés ensemble.
+  document.addEventListener('click',e=>{
+    const go=e.target.closest?.('[data-go]');
+    if(!go||!document.body.classList.contains('agWorkspaceMode'))return;
+    document.body.classList.remove('agWorkspaceMode');
+    root().classList.remove('active');
+    clearRoute();
+  },true);
+
   document.addEventListener('click',e=>{
     const b=e.target.closest?.('[data-module="consultation-ag"],[data-permission="consultation_ag"]');
     if(!b||!b.matches('button,[role="button"]'))return;
@@ -1003,12 +1052,12 @@ function installNavigation(){
   });
 }
 
-style();visualStyle();root();installNavigation();
+style();visualStyle();root();installNavigation();agLiveSyncLoop_();
 setTimeout(()=>scheduleRouteRestore(),450);
 window.addEventListener('pageshow',()=>setTimeout(()=>scheduleRouteRestore(),120));
 window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>scheduleRouteRestore(),80);if(screen==='home')setTimeout(()=>agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)}),180)});
-window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
+window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:21};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:22};
 })();
