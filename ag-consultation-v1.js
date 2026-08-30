@@ -96,10 +96,10 @@ function avgCompletion(c){
 
 function home(){
   screen='home';showRoot();style();
-  const list=campaigns(),open=list.filter(c=>c.status==='open').length,resp=totalResponses(),last=list[0];
+  const list=campaigns(),trash=trashCampaigns(),open=list.filter(c=>c.status==='open').length,resp=totalResponses(),last=list[0];
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
-    '<div class="agTop"><div><h1>Consultation AG</h1><p>Questionnaires, collecte, dépouillement et synthèse pour l’Assemblée générale.</p></div><div class="agToolbar"><button class="agBtn" data-backup>Exporter la sauvegarde</button><button class="agBtn" data-restore>Importer une sauvegarde</button><button class="agPrimary" data-new>＋ Nouveau questionnaire</button></div></div>'+
+    '<div class="agTop"><div><h1>Consultation AG</h1><p>Questionnaires, collecte, dépouillement et synthèse pour l’Assemblée générale.</p></div><div class="agToolbar"><button class="agBtn" data-trash-view>🗑 Corbeille'+(trash.length?' ('+trash.length+')':'')+'</button><button class="agBtn" data-backup>Exporter la sauvegarde</button><button class="agBtn" data-restore>Importer une sauvegarde</button><button class="agPrimary" data-new>＋ Nouveau questionnaire</button></div></div>'+
     '<div class="agKpis">'+
       '<div class="agKpi"><b>'+list.length+'</b><span>questionnaires</span></div>'+
       '<div class="agKpi"><b>'+open+'</b><span>consultation(s) ouverte(s)</span></div>'+
@@ -112,12 +112,13 @@ function home(){
       '<span class="agStatus '+statusClass(c.status)+'">'+statusLabel(c.status)+'</span>'+
       '<h3>'+esc(c.title||'Questionnaire AG')+'</h3>'+
       '<div class="agMeta">'+esc(c.year||'')+' • '+allQuestions(c).length+' question(s) • '+(c.responses||[]).length+' réponse(s)<br>Complétion moyenne : '+avgCompletion(c)+' %</div>'+
-      '<div class="agToolbar" style="margin-top:13px"><button class="agBtn" data-open>Ouvrir</button><button class="agBtn" data-results>Résultats</button></div>'+
+      '<div class="agToolbar" style="margin-top:13px"><button class="agBtn" data-open>Ouvrir</button><button class="agBtn" data-results>Résultats</button>'+(c.status==='closed'?'<button class="agDanger" data-trash title="Mettre à la corbeille" aria-label="Mettre à la corbeille">🗑</button>':'')+'</div>'+
       '</article>'
     ).join(''):'<div class="agEmpty" style="grid-column:1/-1">Aucun questionnaire. Crée le premier à partir du document Word, d’une photo, d’un modèle ou manuellement.</div>')+
     '</div><input data-restore-file type="file" accept=".json,application/json" hidden>';
   $('[data-back]',root()).onclick=backHome;
   $('[data-new]',root()).onclick=newWizard;
+  $('[data-trash-view]',root()).onclick=trashView;
   $('[data-backup]',root()).onclick=exportBackup;
   $('[data-restore]',root()).onclick=()=>$('[data-restore-file]',root()).click();
   $('[data-restore-file]',root()).onchange=importBackup;
@@ -125,6 +126,31 @@ function home(){
     const id=card.dataset.id;
     $('[data-open]',card).onclick=()=>campaign(id,'overview');
     $('[data-results]',card).onclick=()=>campaign(id,'results');
+    $('[data-trash]',card)?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home()}});
+  });
+}
+
+function trashView(){
+  screen='trash';showRoot();style();
+  const list=trashCampaigns();
+  root().innerHTML=
+    '<button class="back" data-back>← Retour aux questionnaires</button>'+
+    '<div class="agTop"><div><h1>Corbeille</h1><p>Questionnaires AG retirés de la liste principale. Tu peux les restaurer ou les supprimer définitivement.</p></div></div>'+
+    '<div class="agGrid">'+
+    (list.length?list.map(c=>
+      '<article class="agCard" data-trash-id="'+esc(c.id)+'">'+
+      '<span class="agStatus closed">Dans la corbeille</span>'+
+      '<h3>'+esc(c.title||'Questionnaire AG')+'</h3>'+
+      '<div class="agMeta">'+esc(c.year||'')+' • '+allQuestions(c).length+' question(s) • '+(c.responses||[]).length+' réponse(s)<br>Mis à la corbeille le '+new Date(c.trashedAt).toLocaleDateString('fr-FR')+'</div>'+
+      '<div class="agToolbar" style="margin-top:13px"><button class="agBtn" data-restore-item>↩ Restaurer</button><button class="agDanger" data-delete-item>Supprimer définitivement</button></div>'+
+      '</article>'
+    ).join(''):'<div class="agEmpty" style="grid-column:1/-1">La corbeille est vide.</div>')+
+    '</div>';
+  $('[data-back]',root()).onclick=home;
+  $('[data-trash-id]',root()).forEach(card=>{
+    const id=card.dataset.trashId;
+    $('[data-restore-item]',card).onclick=()=>{restoreFromTrash(id);home()};
+    $('[data-delete-item]',card).onclick=()=>{if(confirm('Supprimer définitivement ce questionnaire et toutes ses réponses ? Cette action est irréversible.')){removeCampaign(id);trashView()}};
   });
 }
 
@@ -502,11 +528,11 @@ function bar(label,count,total){
 function settings(c){
   $('[data-content]',root()).innerHTML=
     '<div class="agTwo"><div class="agPanel"><h3>Paramètres du questionnaire</h3><div class="agField"><label>Titre</label><input data-title value="'+esc(c.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(c.year||'')+'"></div><div class="agField"><label>Identification du répondant</label><select data-identity><option value="optional" '+(identityMode(c)==='optional'?'selected':'')+'>Prénom et nom facultatifs</option><option value="anonymous" '+(identityMode(c)==='anonymous'?'selected':'')+'>Réponse totalement anonyme</option></select></div><div class="agToolbar" style="margin-top:14px"><button class="agPrimary" data-save>Enregistrer</button><button class="agBtn" data-edit>Modifier les questions</button></div></div>'+
-    '<div class="agPanel"><h3>Maintenance</h3><div class="agNotice">Les données de ce module sont sauvegardées dans l’application. Utilise régulièrement « Exporter la sauvegarde » depuis l’accueil de Consultation AG.</div><div class="agToolbar" style="margin-top:14px"><button class="agBtn" data-dup>Dupliquer le questionnaire</button><button class="agDanger" data-delete>Supprimer le questionnaire</button></div></div></div>';
+    '<div class="agPanel"><h3>Maintenance</h3><div class="agNotice">Les données de ce module sont sauvegardées dans l’application. Utilise régulièrement « Exporter la sauvegarde » depuis l’accueil de Consultation AG.</div><div class="agToolbar" style="margin-top:14px"><button class="agBtn" data-dup>Dupliquer le questionnaire</button>'+(c.status==='closed'?'<button class="agDanger" data-trash-settings>🗑 Mettre à la corbeille</button>':'')+'</div></div></div>';
   $('[data-save]',root()).onclick=()=>{c.title=$('[data-title]',root()).value.trim()||c.title;c.year=$('[data-year]',root()).value;c.settings=c.settings||{};c.settings.identityMode=$('[data-identity]',root()).value;c.settings.anonymous=c.settings.identityMode==='anonymous';audit(c,'Paramètres modifiés');saveCampaign(c);campaign(c.id,'settings')};
   $('[data-edit]',root()).onclick=()=>{draft=JSON.parse(JSON.stringify(c));saveDraft();builder()};
   $('[data-dup]',root()).onclick=()=>{const copy=JSON.parse(JSON.stringify(c));copy.id=uid('ag');copy.title+=' — copie';copy.status='draft';copy.createdAt=now();copy.updatedAt=now();copy.responses=[];copy.audit=[];audit(copy,'Questionnaire dupliqué',c.title);saveCampaign(copy);campaign(copy.id,'overview')};
-  $('[data-delete]',root()).onclick=()=>{if(confirm('Supprimer définitivement ce questionnaire et toutes ses réponses ?')){removeCampaign(c.id);home()}};
+  $('[data-trash-settings]',root())?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(c.id);home()}});
 }
 
 function exportCSV(c){
