@@ -6,6 +6,11 @@ const APP_VERSION=2;
 const ROUTE_KEY='horticulture-ag-route-v3';
 let activeId='',draft=null,screen='home';
 let routeRestored=false;
+const AG_API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
+const AG_SESSION='horticulture-admin-session-v1';
+const AG_PERSIST='horticulture-admin-persistent-session-v1';
+const AG_GENERATION='horticulture-session-generation-v1';
+let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0;
 
 function saveRoute(route){
   try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
@@ -27,6 +32,59 @@ const now=()=>new Date().toISOString();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 
+function agSession_(){
+  try{return JSON.parse(localStorage.getItem(AG_PERSIST)||sessionStorage.getItem(AG_SESSION)||'null')}catch{return null}
+}
+function agGeneration_(){
+  return localStorage.getItem(AG_GENERATION)||sessionStorage.getItem(AG_GENERATION)||'';
+}
+function agAuth_(){
+  const s=agSession_(),generation=agGeneration_();
+  return s?.id&&generation?{userId:String(s.id),generation:String(generation)}:null;
+}
+async function agPostShared_(action,payload={}){
+  const auth=agAuth_();if(!auth)return null;
+  const r=await fetch(AG_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...payload,...auth})});
+  const j=await r.json();if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');return j;
+}
+async function agPushCampaign_(campaign){
+  try{
+    const auth=agAuth_();if(!auth)return false;
+    const copy=JSON.parse(JSON.stringify(campaign||{}));
+    await agPostShared_('saveAGCampaign',{campaign:copy});
+    agSharedReady=true;return true;
+  }catch(e){console.warn('Base Consultation AG — enregistrement',e);return false}
+}
+async function agDeleteShared_(campaignId){
+  try{await agPostShared_('deleteAGCampaign',{campaignId:String(campaignId)});agSharedReady=true;return true}
+  catch(e){console.warn('Base Consultation AG — suppression',e);return false}
+}
+async function agRefreshShared_(force=false){
+  if(agSharedBusy)return false;
+  if(!agAuth_())return false;
+  if(!force&&agSharedReady&&Date.now()-agSharedLastLoad<3000)return true;
+  agSharedBusy=true;
+  try{
+    const auth=agAuth_();
+    const u=new URL(AG_API);u.searchParams.set('action','listAGCampaigns');u.searchParams.set('userId',auth.userId);u.searchParams.set('generation',auth.generation);u.searchParams.set('t',Date.now());
+    const r=await fetch(u,{cache:'no-store'}),j=await r.json();
+    if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
+    const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns;
+    if(!remote.length&&local.length){
+      for(const campaign of local)await agPushCampaign_(campaign);
+    }else{
+      saveDB({version:APP_VERSION,campaigns:remote});
+    }
+    agSharedReady=true;agSharedLastLoad=Date.now();return true;
+  }catch(e){console.warn('Base Consultation AG — lecture',e);return false}
+  finally{agSharedBusy=false}
+}
+function agRefreshSharedSoon_(){
+  setTimeout(()=>agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)}),220);
+  setTimeout(()=>{if(!agSharedReady&&screen==='home')agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})},1400);
+}
+
+
 function db(){
   try{
     const raw=JSON.parse(localStorage.getItem(STORE)||'{"version":2,"campaigns":[]}');
@@ -41,11 +99,13 @@ function saveCampaign(c){
   const d=db(),i=d.campaigns.findIndex(x=>x.id===c.id);
   c.updatedAt=now();
   if(i<0)d.campaigns.unshift(c);else d.campaigns[i]=c;
-  saveDB(d);return c;
+  saveDB(d);
+  agPushCampaign_(c);
+  return c;
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
 function getAnyCampaign(id){return db().campaigns.find(x=>x.id===id)||null}
-function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d)}
+function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d);agDeleteShared_(id)}
 function moveToTrash(id){const c=getAnyCampaign(id);if(!c||c.status!=='closed')return false;c.trashedAt=now();audit(c,'Mis à la corbeille');saveCampaign(c);return true}
 function restoreFromTrash(id){const c=getAnyCampaign(id);if(!c)return false;delete c.trashedAt;audit(c,'Restauré depuis la corbeille');saveCampaign(c);return true}
 function identityMode(c){return c?.settings?.identityMode||((c?.settings?.anonymous===true)?'anonymous':'optional')}
@@ -172,7 +232,7 @@ function agGoPermission(permission){
   },0);
 }
 
-function home(){
+function home(fromShared=false){
   saveRoute({screen:'home'});
   screen='home';showRoot();style();visualStyle();
   const list=campaigns(),trash=trashCampaigns(),openCount=list.filter(c=>c.status==='open').length,resp=totalResponses();
@@ -199,7 +259,7 @@ function home(){
         '<div class="agSearchArea"><label class="agSearchBox">'+agSvg('search')+'<input data-search placeholder="Rechercher..."></label><button class="agFilterBtn" data-sort>'+agSvg('filter')+'<span>Filtrer</span><span>⌄</span></button></div>'+
       '</section>'+
       '<section class="agList" data-list></section>'+
-      '<div class="agLocalFoot">'+agSvg('lock')+'Vos données sont stockées localement sur cet appareil</div>'+
+      '<div class="agLocalFoot">'+agSvg('lock')+(agSharedReady?'Données synchronisées avec la base partagée de l’association':'Stockage local — synchronisation avec la base en attente')+'</div>'+
     '</main>'+
   '</div>'+
   '<input data-restore-file type="file" accept=".json,application/json" hidden>';
@@ -263,6 +323,7 @@ function home(){
   $('[data-new]',root()).onclick=newWizard;
   $('[data-trash-view]',root()).onclick=trashView;
   $('[data-restore-file]',root()).onchange=importBackup;
+  if(!fromShared)agRefreshSharedSoon_();
 }
 
 function trashView(){
@@ -691,7 +752,7 @@ function exportBackup(){
 function importBackup(e){
   const file=e.target.files[0];if(!file)return;
   const r=new FileReader();
-  r.onload=()=>{try{const j=JSON.parse(r.result);const data=j.type==='horticulture-ag-backup'?j.data:j;if(!Array.isArray(data.campaigns))throw 0;if(!confirm('Remplacer les données Consultation AG actuelles par cette sauvegarde ?'))return;saveDB({version:APP_VERSION,campaigns:data.campaigns});home()}catch{alert('Sauvegarde non reconnue.')}};
+  r.onload=()=>{try{const j=JSON.parse(r.result);const data=j.type==='horticulture-ag-backup'?j.data:j;if(!Array.isArray(data.campaigns))throw 0;if(!confirm('Remplacer les données Consultation AG actuelles par cette sauvegarde ?'))return;saveDB({version:APP_VERSION,campaigns:data.campaigns});Promise.all(data.campaigns.map(agPushCampaign_)).finally(()=>home())}catch{alert('Sauvegarde non reconnue.')}};
   r.readAsText(file);
 }
 function importResponsesCSV(c,file){
