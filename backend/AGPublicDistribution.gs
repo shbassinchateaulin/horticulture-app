@@ -1,32 +1,17 @@
 // AGPublicDistribution.gs — diffusion adhérents + questionnaire public AG
-// Extension non destructive du routeur Code.gs.
+// Utilise la base centrale définie dans Adherents.gs.
 
-const AG_MEMBERS_SHEET='Adhérents';
-const AG_MEMBERS_HEADERS=['id','firstName','lastName','email','active','season','updatedAt'];
 const AG_DISTRIBUTION_SHEET='AG Diffusion';
 const AG_DISTRIBUTION_HEADERS=['id','campaignId','memberId','firstName','lastName','email','tokenHash','kind','sentAt','respondedAt','lastError','createdAt'];
 const AG_PUBLIC_APP_URL='https://shbassinchateaulin.github.io/horticulture-app/consultation.html';
 
-function agMembersSheet_(){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  let sh=ss.getSheetByName(AG_MEMBERS_SHEET);
-  if(!sh)sh=ss.insertSheet(AG_MEMBERS_SHEET);
-  if(sh.getLastRow()===0)sh.appendRow(AG_MEMBERS_HEADERS);
-  else{
-    const row=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),AG_MEMBERS_HEADERS.length)).getValues()[0];
-    AG_MEMBERS_HEADERS.forEach((h,i)=>{if(String(row[i]||'')!==h)sh.getRange(1,i+1).setValue(h)});
-  }
-  return sh;
-}
-function agDistributionSheet_(){return agSheet_(AG_DISTRIBUTION_SHEET,AG_DISTRIBUTION_HEADERS)}
-function agMemberRows_(){
-  const sh=agMembersSheet_();if(sh.getLastRow()<2)return[];
-  return sh.getDataRange().getValues().slice(1).filter(r=>r[0]||r[3]).map(r=>({
-    id:String(r[0]||Utilities.getUuid()),firstName:String(r[1]||''),lastName:String(r[2]||''),
-    email:String(r[3]||'').trim().toLowerCase(),active:String(r[4]).toLowerCase()!=='false',season:String(r[5]||'')
+function agDistributionSheet_(){return adherentsSheet_(AG_DISTRIBUTION_SHEET,AG_DISTRIBUTION_HEADERS)}
+function agActiveMembers_(){
+  return activeAdherents_().map(m=>({
+    id:String(m.id||''),firstName:String(m.firstName||''),lastName:String(m.lastName||''),
+    email:String(m.email||'').trim().toLowerCase(),active:m.active!==false,season:String(m.season||'')
   }));
 }
-function agActiveMembers_(){return agMemberRows_().filter(m=>m.active)}
 function agRandomToken_(){return Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'')}
 function agTokenHash_(token){return sha256_(String(token||''))}
 function agCampaignServer_(id){
@@ -48,49 +33,43 @@ function agFindDistributionByToken_(token){
 }
 function agDistributionSummary_(campaignId,userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
+  adherentsEnsureDb_();
   const members=agActiveMembers_(),withEmail=members.filter(m=>m.email);
   const sh=agDistributionSheet_(),rows=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1).filter(r=>String(r[1])===String(campaignId));
   const sent=rows.filter(r=>r[8]).length,responded=rows.filter(r=>r[9]).length,failed=rows.filter(r=>r[10]).length;
-  return{ok:true,totalMembers:members.length,withEmail:withEmail.length,withoutEmail:members.length-withEmail.length,prepared:rows.length,sent:sent,responded:responded,failed:failed,remaining:Math.max(0,sent-responded),mailQuota:MailApp.getRemainingDailyQuota()};
+  return{ok:true,totalMembers:members.length,withEmail:withEmail.length,withoutEmail:members.length-withEmail.length,prepared:rows.length,sent:sent,responded:responded,failed:failed,remaining:Math.max(0,sent-responded),mailQuota:MailApp.getRemainingDailyQuota(),membersSpreadsheetId:ADHERENTS_SPREADSHEET_ID};
 }
 function agPrepareDistribution_(campaignId,userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   const c=agCampaignServer_(campaignId);if(!c)return{ok:false,error:'Questionnaire introuvable.'};
+  adherentsEnsureDb_();
   const members=agActiveMembers_(),sh=agDistributionSheet_();
   const existing=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1);
   const existingKeys=new Set(existing.filter(r=>String(r[1])===String(campaignId)).map(r=>String(r[2])+'|'+String(r[5]).toLowerCase()));
-  const created=[];
+  let created=0;
   members.filter(m=>m.email).forEach(m=>{
-    const key=String(m.id)+'|'+m.email;
-    if(existingKeys.has(key))return;
+    const key=String(m.id)+'|'+m.email;if(existingKeys.has(key))return;
     const token=agRandomToken_(),id=Utilities.getUuid(),at=new Date().toISOString();
     sh.appendRow([id,String(campaignId),m.id,m.firstName,m.lastName,m.email,agTokenHash_(token),'member','','','',at]);
-    created.push({id:id,memberId:m.id,email:m.email,token:token});
+    created++;
   });
   SpreadsheetApp.flush();
-  const summary=agDistributionSummary_(campaignId,userId,generation);
-  summary.created=created.length;
-  return summary;
+  const summary=agDistributionSummary_(campaignId,userId,generation);summary.created=created;return summary;
 }
 function agMailHtml_(c,firstName,link,reminder){
   const hello=firstName?'Bonjour '+escapeHtml_(firstName)+',':'Bonjour,';
   const lead=reminder?'Nous nous permettons de vous rappeler que la consultation est toujours ouverte.':'La Société d’Horticulture et d’Art Floral du Bassin de Châteaulin vous invite à participer à sa consultation.';
   return '<div style="margin:0;background:#f3f7f4;padding:28px 12px;font-family:Arial,sans-serif;color:#173126">'+
     '<div style="max-width:640px;margin:auto;background:#fff;border:1px solid #dfe8e2;border-radius:20px;overflow:hidden">'+
-      '<div style="background:linear-gradient(135deg,#07583f,#063d2f);padding:28px 30px;color:#fff">'+
-        '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Société d’Horticulture et d’Art Floral</div>'+
-        '<div style="font-size:21px;font-weight:700;margin-top:4px">du Bassin de Châteaulin</div>'+
-      '</div>'+
-      '<div style="padding:30px">'+
-        '<p style="margin-top:0">'+hello+'</p><p>'+lead+'</p>'+
+      '<div style="background:#07583f;padding:28px 30px;color:#fff"><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Société d’Horticulture et d’Art Floral</div><div style="font-size:21px;font-weight:700;margin-top:4px">du Bassin de Châteaulin</div></div>'+
+      '<div style="padding:30px"><p style="margin-top:0">'+hello+'</p><p>'+lead+'</p>'+
         '<div style="background:#edf7f1;border-radius:14px;padding:18px;margin:22px 0"><div style="font-size:12px;color:#5f7168;text-transform:uppercase;font-weight:700">Consultation — Assemblée générale</div><div style="font-size:22px;font-weight:800;color:#07583f;margin-top:5px">'+escapeHtml_(c.title||'Questionnaire AG')+'</div>'+(c.year?'<div style="margin-top:5px;color:#65776e">'+escapeHtml_(c.year)+'</div>':'')+'</div>'+
         '<p>Votre avis nous aide à préparer les activités, sorties et projets de l’association. Le questionnaire ne prend que quelques minutes.</p>'+
         '<p style="text-align:center;margin:30px 0"><a href="'+link+'" style="display:inline-block;background:#08704c;color:white;text-decoration:none;font-weight:800;padding:15px 24px;border-radius:11px">Répondre au questionnaire</a></p>'+
-        '<p style="font-size:12px;color:#708079">Ce lien vous est personnel. Merci de ne pas le transférer.</p>'+
-        '<p style="margin-bottom:0">Merci pour votre participation.<br><b>Le Bureau</b></p>'+
-      '</div>'+
-    '</div></div>';
+        '<p style="font-size:12px;color:#708079">Ce lien vous est personnel. Merci de ne pas le transférer.</p><p style="margin-bottom:0">Merci pour votre participation.<br><b>Le Bureau</b></p>'+
+      '</div></div></div>';
 }
+function agRegenerateTokenForRow_(sh,row){const token=agRandomToken_();sh.getRange(row,7).setValue(agTokenHash_(token));return token}
 function agSendInvitations_(campaignId,userId,generation,reminder){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   const c=agCampaignServer_(campaignId);if(!c)return{ok:false,error:'Questionnaire introuvable.'};
@@ -104,8 +83,7 @@ function agSendInvitations_(campaignId,userId,generation,reminder){
     if((!reminder&&alreadySent)||(reminder&&(!alreadySent||alreadyResponded))){skipped++;continue}
     if(quota<=0){sh.getRange(i+1,11).setValue('Quota e-mail atteint');failed++;continue}
     const email=String(r[5]||'').trim();if(!email){skipped++;continue}
-    const tokenRow=agRegenerateTokenForRow_(sh,i+1,r);
-    const link=AG_PUBLIC_APP_URL+'?t='+encodeURIComponent(tokenRow.token);
+    const token=agRegenerateTokenForRow_(sh,i+1),link=AG_PUBLIC_APP_URL+'?t='+encodeURIComponent(token);
     try{
       const subject=(reminder?'Rappel — ':'')+'Votre avis compte — '+String(c.title||'Consultation AG');
       MailApp.sendEmail({to:email,subject:subject,body:'Bonjour '+String(r[3]||'')+',\n\nRépondez à la consultation : '+link+'\n\nMerci pour votre participation.\nLe Bureau',htmlBody:agMailHtml_(c,String(r[3]||''),link,!!reminder),name:"Société d’Horticulture du Bassin de Châteaulin"});
@@ -114,9 +92,6 @@ function agSendInvitations_(campaignId,userId,generation,reminder){
   }
   SpreadsheetApp.flush();
   const summary=agDistributionSummary_(campaignId,userId,generation);summary.sentNow=sent;summary.skipped=skipped;summary.failedNow=failed;return summary;
-}
-function agRegenerateTokenForRow_(sh,row,r){
-  const token=agRandomToken_();sh.getRange(row,7).setValue(agTokenHash_(token));return{token:token};
 }
 function agPublicCampaign_(token,previewId){
   if(previewId){
@@ -142,8 +117,7 @@ function agSubmitPublicResponse_(token,answers){
   rsh.appendRow([responseId,c.id,first,last,[first,last].filter(Boolean).join(' '),'email',at,at,JSON.stringify(answers),completion]);
   d.sheet.getRange(d.row,10).setValue(at);
   const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);ash.appendRow([Utilities.getUuid(),c.id,at,'Réponse numérique reçue','Questionnaire en ligne']);
-  SpreadsheetApp.flush();
-  return{ok:true,message:'Merci, votre réponse a bien été enregistrée.'};
+  SpreadsheetApp.flush();return{ok:true,message:'Merci, votre réponse a bien été enregistrée.'};
 }
 
 // Extension du routeur principal sans modifier Code.gs.
@@ -166,4 +140,7 @@ doPost=function(e){
   return agBaseDoPost_(e);
 };
 
-function initialiserBaseAdherentsEtDiffusionAG(){agMembersSheet_();agDistributionSheet_();return 'Base Adhérents et diffusion AG prête.'}
+function initialiserBaseAdherentsEtDiffusionAG(){
+  const ss=adherentsEnsureDb_();agDistributionSheet_();
+  return 'Base Adhérents et diffusion AG prête dans « '+ss.getName()+' »';
+}
