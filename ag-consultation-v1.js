@@ -20,7 +20,8 @@ function db(){
   }catch{return {version:APP_VERSION,campaigns:[]}}
 }
 function saveDB(data){localStorage.setItem(STORE,JSON.stringify(data))}
-function campaigns(){return db().campaigns}
+function campaigns(){return db().campaigns.filter(c=>!c.trashedAt)}
+function trashCampaigns(){return db().campaigns.filter(c=>!!c.trashedAt)}
 function saveCampaign(c){
   const d=db(),i=d.campaigns.findIndex(x=>x.id===c.id);
   c.updatedAt=now();
@@ -28,7 +29,11 @@ function saveCampaign(c){
   saveDB(d);return c;
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
+function getAnyCampaign(id){return db().campaigns.find(x=>x.id===id)||null}
 function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d)}
+function moveToTrash(id){const c=getAnyCampaign(id);if(!c||c.status!=='closed')return false;c.trashedAt=now();audit(c,'Mis à la corbeille');saveCampaign(c);return true}
+function restoreFromTrash(id){const c=getAnyCampaign(id);if(!c)return false;delete c.trashedAt;audit(c,'Restauré depuis la corbeille');saveCampaign(c);return true}
+function identityMode(c){return c?.settings?.identityMode||((c?.settings?.anonymous===true)?'anonymous':'optional')}
 function audit(c,action,detail=''){c.audit=c.audit||[];c.audit.unshift({id:uid('log'),at:now(),action,detail});c.audit=c.audit.slice(0,80)}
 function saveDraft(){if(draft)localStorage.setItem(DRAFT,JSON.stringify(draft))}
 function clearDraft(){localStorage.removeItem(DRAFT)}
