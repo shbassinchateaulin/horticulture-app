@@ -117,6 +117,18 @@ function agMarkDeleted_(campaignId,userId){
   }
   sh.appendRow([id,at,by]);
 }
+function agAppendResponseRowsToMap_(sh,map,seen){
+  if(!sh||sh.getLastRow()<2)return;
+  sh.getDataRange().getValues().slice(1).forEach(r=>{
+    const cid=String(r[1]||''),rid=String(r[0]||'');
+    if(!rid||!map[cid]||seen[rid])return;
+    seen[rid]=1;
+    const response=agResponseFromRow_(r);
+    map[cid].responses.push(response);
+    const responseAt=String(response.updatedAt||response.createdAt||'');
+    if(responseAt&&Date.parse(responseAt)>Date.parse(String(map[cid].updatedAt||0)))map[cid].updatedAt=responseAt;
+  });
+}
 function agListCampaigns_(userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   agEnsureDb_();
@@ -125,7 +137,12 @@ function agListCampaigns_(userId,generation){
   const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);
   const campaigns=csh.getLastRow()<2?[]:csh.getDataRange().getValues().slice(1).filter(r=>r[0]).map(agCampaignFromRow_);
   const map={};campaigns.forEach(c=>map[c.id]=c);
-  if(rsh.getLastRow()>=2)rsh.getDataRange().getValues().slice(1).forEach(r=>{const cid=String(r[1]||'');if(r[0]&&map[cid])map[cid].responses.push(agResponseFromRow_(r))});
+  const seen={};
+  agAppendResponseRowsToMap_(rsh,map,seen);
+  // Les réponses issues du lien public / QR code vivent dans une feuille séparée
+  // afin qu'une sauvegarde administrative ne puisse jamais les écraser.
+  const publicSheet=agDb_().getSheetByName('AG Réponses publiques');
+  if(publicSheet)agAppendResponseRowsToMap_(publicSheet,map,seen);
   if(ash.getLastRow()>=2)ash.getDataRange().getValues().slice(1).forEach(r=>{const cid=String(r[1]||'');if(r[0]&&map[cid])map[cid].audit.push(agAuditFromRow_(r))});
   campaigns.forEach(c=>{
     c.responses.sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
@@ -165,7 +182,7 @@ function agSaveCampaign_(campaign,userId,generation){
     else csh.appendRow(data);
 
     agDeleteRowsByCampaign_(rsh,campaign.id,2);
-    const responses=(campaign.responses||[]).map(r=>[
+    const responses=(campaign.responses||[]).filter(r=>String(r.channel||'')!=='public'&&String(r.channel||'')!=='email').map(r=>[
       String(r.id||Utilities.getUuid()),String(campaign.id),
       String(r.respondentFirstName||''),String(r.respondentLastName||''),String(r.respondent||''),
       String(r.channel||'digital'),String(r.createdAt||updatedAt),String(r.updatedAt||r.createdAt||updatedAt),
@@ -199,6 +216,8 @@ function agDeleteCampaign_(campaignId,userId,generation){
     }
     agDeleteRowsByCampaign_(rsh,campaignId,2);
     agDeleteRowsByCampaign_(ash,campaignId,2);
+    const publicSheet=agDb_().getSheetByName('AG Réponses publiques');
+    if(publicSheet)agDeleteRowsByCampaign_(publicSheet,campaignId,2);
     SpreadsheetApp.flush();
     return{ok:true};
   }finally{lock.releaseLock()}
@@ -207,7 +226,7 @@ function agDatabaseInfo_(userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   agEnsureDb_();
   const ss=agDb_();
-  return{ok:true,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),sheets:[AG_CAMPAIGNS_SHEET,AG_RESPONSES_SHEET,AG_AUDIT_SHEET,AG_DELETIONS_SHEET]};
+  return{ok:true,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),sheets:[AG_CAMPAIGNS_SHEET,AG_RESPONSES_SHEET,AG_AUDIT_SHEET,AG_DELETIONS_SHEET,'AG Réponses publiques']};
 }
 function initialiserBaseConsultationAG(){
   agEnsureDb_();
