@@ -1,4 +1,4 @@
-const VERSION='v111-ag-transmission-a4';
+const VERSION='v112-ag-response-source-print-fix';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -57,7 +57,7 @@ self.addEventListener('fetch',e=>{
     source=source.replace("  setTimeout(()=>scheduleRouteRestore(),80);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))","  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))");
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
     source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};");
-    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=2';s.async=true;document.head.appendChild(s)})();`;
+    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=3';s.async=true;document.head.appendChild(s)})();`;
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
 });
