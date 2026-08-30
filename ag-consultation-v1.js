@@ -62,7 +62,7 @@ function root(){
 }
 function showRoot(){
   document.body.classList.add('agWorkspaceMode');
-  $('.view').forEach(v=>v.classList.remove('active'));
+  $$('.view').forEach(v=>v.classList.remove('active'));
   root().classList.add('active');
   window.scrollTo(0,0);
 }
