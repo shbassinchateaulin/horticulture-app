@@ -2,25 +2,40 @@
 const PERM='consultation_ag';
 const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M8 12h3M8 16h3M14 8h2M14 12h2M14 16h2"/><path d="m8 8 .8.8L10.5 7"/></svg>`;
 let lastOpen=0;
+function runAG_(){
+ document.getElementById('drawer')?.classList.remove('open');
+ try{
+   if(typeof window.HorticultureAG?.open==='function'){window.HorticultureAG.open();return true}
+ }catch(err){console.error('Ouverture Consultation AG',err)}
+ return false;
+}
 function openAG(e){
  if(e){e.preventDefault();e.stopPropagation()}
- const t=Date.now();if(t-lastOpen<500)return;lastOpen=t;
- document.getElementById('drawer')?.classList.remove('open');
- const run=()=>{
-   try{
-     if(typeof window.HorticultureAG?.open==='function'){window.HorticultureAG.open();return true}
-   }catch(err){console.error('Ouverture Consultation AG',err)}
-   return false
- };
- if(run())return;
- setTimeout(()=>{if(!run())setTimeout(run,180)},80);
+ const t=Date.now();if(t-lastOpen<450)return;lastOpen=t;
+ if(runAG_())return;
+ [60,180,420].forEach(ms=>setTimeout(runAG_,ms));
+}
+function isAGControl_(target){
+ return target?.closest?.('[data-module="consultation-ag"],[data-permission="consultation_ag"]')||null;
+}
+function captureAG_(e){
+ const b=isAGControl_(e.target);if(!b)return;
+ e.preventDefault();
+ e.stopPropagation();
+ if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
+ openAG();
 }
 function wire(b){
  if(!b||b.dataset.agMobileOpen==='1')return;
  b.dataset.agMobileOpen='1';
- b.addEventListener('pointerup',e=>{if(e.pointerType==='touch'||e.pointerType==='pen')openAG(e)},{passive:false});
- b.addEventListener('click',openAG);
+ b.type='button';
+ b.style.touchAction='manipulation';
+ b.onclick=openAG;
 }
+// Capture au niveau window : avant les autres gestionnaires globaux de l'application.
+// C'est volontairement limité au bouton Consultation AG.
+window.addEventListener('touchend',captureAG_,{capture:true,passive:false});
+window.addEventListener('click',captureAG_,true);
 function add(){
  const grid=document.querySelector('#home .dashGrid');
  if(grid&&!grid.querySelector('[data-permission="'+PERM+'"]')){
