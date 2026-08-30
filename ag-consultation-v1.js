@@ -10,6 +10,7 @@ const AG_API=window.HorticultureSharedUsers?.api||'https://script.google.com/mac
 const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
+const AG_PENDING_DELETE='horticulture-ag-pending-delete-v1';
 let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0;
 
 function saveRoute(route){
@@ -42,46 +43,120 @@ function agAuth_(){
   const s=agSession_(),generation=agGeneration_();
   return s?.id&&generation?{userId:String(s.id),generation:String(generation)}:null;
 }
+function agSleep_(ms){return new Promise(r=>setTimeout(r,ms))}
+async function agEnsureAuth_(){
+  let auth=agAuth_();if(auth)return auth;
+  try{await window.HorticultureSessions?.check?.()}catch(_){}
+  auth=agAuth_();if(auth)return auth;
+  for(const ms of [450,1000,2200]){
+    await agSleep_(ms);
+    try{await window.HorticultureSessions?.check?.()}catch(_){}
+    auth=agAuth_();if(auth)return auth;
+  }
+  return null;
+}
+async function agFetchJson_(url,options){
+  let last=null;
+  for(let i=0;i<4;i++){
+    try{
+      const r=await fetch(url,{...(options||{}),cache:'no-store'});
+      const text=await r.text();
+      let j=null;try{j=JSON.parse(text)}catch(_){}
+      if(r.ok&&j)return j;
+      last=new Error(j?.error||('HTTP '+r.status));
+    }catch(e){last=e}
+    if(i<3)await agSleep_([500,1600,3400][i]);
+  }
+  throw last||new Error('Connexion à la base Consultation AG impossible');
+}
 async function agPostShared_(action,payload={}){
-  const auth=agAuth_();if(!auth)return null;
-  const r=await fetch(AG_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...payload,...auth})});
-  const j=await r.json();if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');return j;
+  const auth=await agEnsureAuth_();if(!auth)return null;
+  const j=await agFetchJson_(AG_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...payload,...auth})});
+  if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
+  return j;
+}
+function agPendingDeletes_(){
+  try{return JSON.parse(localStorage.getItem(AG_PENDING_DELETE)||'[]').map(String)}catch{return[]}
+}
+function agSetPendingDeletes_(ids){
+  localStorage.setItem(AG_PENDING_DELETE,JSON.stringify([...new Set((ids||[]).map(String).filter(Boolean))]));
 }
 async function agPushCampaign_(campaign){
   try{
-    const auth=agAuth_();if(!auth)return false;
-    const copy=JSON.parse(JSON.stringify(campaign||{}));
-    await agPostShared_('saveAGCampaign',{campaign:copy});
+    if(!campaign?.id)return false;
+    const copy=JSON.parse(JSON.stringify(campaign));
+    const j=await agPostShared_('saveAGCampaign',{campaign:copy});
+    if(!j)return false;
     agSharedReady=true;return true;
   }catch(e){console.warn('Base Consultation AG — enregistrement',e);return false}
 }
 async function agDeleteShared_(campaignId){
-  try{await agPostShared_('deleteAGCampaign',{campaignId:String(campaignId)});agSharedReady=true;return true}
-  catch(e){console.warn('Base Consultation AG — suppression',e);return false}
+  const id=String(campaignId||'');if(!id)return false;
+  try{
+    const j=await agPostShared_('deleteAGCampaign',{campaignId:id});
+    if(!j)throw new Error('Session indisponible');
+    agSetPendingDeletes_(agPendingDeletes_().filter(x=>x!==id));
+    agSharedReady=true;return true;
+  }catch(e){
+    const pending=agPendingDeletes_();if(!pending.includes(id)){pending.push(id);agSetPendingDeletes_(pending)}
+    console.warn('Base Consultation AG — suppression différée',e);return false
+  }
 }
+async function agFlushPendingDeletes_(){
+  const ids=agPendingDeletes_();if(!ids.length)return;
+  for(const id of ids){
+    try{
+      const j=await agPostShared_('deleteAGCampaign',{campaignId:id});
+      if(j)agSetPendingDeletes_(agPendingDeletes_().filter(x=>x!==id));
+    }catch(e){console.warn('Base Consultation AG — suppression en attente',e);break}
+  }
+}
+function agTime_(v){const n=Date.parse(String(v||''));return Number.isFinite(n)?n:0}
 async function agRefreshShared_(force=false){
   if(agSharedBusy)return false;
-  if(!agAuth_())return false;
-  if(!force&&agSharedReady&&Date.now()-agSharedLastLoad<3000)return true;
+  if(!force&&agSharedReady&&Date.now()-agSharedLastLoad<2500)return true;
   agSharedBusy=true;
   try{
-    const auth=agAuth_();
-    const u=new URL(AG_API);u.searchParams.set('action','listAGCampaigns');u.searchParams.set('userId',auth.userId);u.searchParams.set('generation',auth.generation);u.searchParams.set('t',Date.now());
-    const r=await fetch(u,{cache:'no-store'}),j=await r.json();
+    const auth=await agEnsureAuth_();if(!auth)return false;
+    await agFlushPendingDeletes_();
+    const u=new URL(AG_API);
+    u.searchParams.set('action','listAGCampaigns');
+    u.searchParams.set('userId',auth.userId);
+    u.searchParams.set('generation',auth.generation);
+    u.searchParams.set('t',Date.now());
+    const j=await agFetchJson_(u.toString(),{cache:'no-store'});
     if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
+
     const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns;
-    if(!remote.length&&local.length){
-      for(const campaign of local)await agPushCampaign_(campaign);
-    }else{
-      saveDB({version:APP_VERSION,campaigns:remote});
+    const pendingDelete=new Set(agPendingDeletes_());
+    const merged=new Map();
+
+    remote.forEach(r=>{if(r?.id&&!pendingDelete.has(String(r.id)))merged.set(String(r.id),r)});
+    local.forEach(l=>{
+      if(!l?.id||pendingDelete.has(String(l.id)))return;
+      const id=String(l.id),r=merged.get(id);
+      if(!r||agTime_(l.updatedAt)>agTime_(r.updatedAt))merged.set(id,l);
+    });
+
+    const mergedList=[...merged.values()].sort((a,b)=>agTime_(b.updatedAt||b.createdAt)-agTime_(a.updatedAt||a.createdAt));
+    saveDB({version:APP_VERSION,campaigns:mergedList});
+
+    const remoteMap=new Map(remote.filter(x=>x?.id).map(x=>[String(x.id),x]));
+    for(const item of mergedList){
+      const r=remoteMap.get(String(item.id));
+      if(!r||agTime_(item.updatedAt)>agTime_(r.updatedAt))await agPushCampaign_(item);
     }
+
     agSharedReady=true;agSharedLastLoad=Date.now();return true;
-  }catch(e){console.warn('Base Consultation AG — lecture',e);return false}
-  finally{agSharedBusy=false}
+  }catch(e){
+    console.warn('Base Consultation AG — lecture',e);
+    return false
+  }finally{agSharedBusy=false}
 }
 function agRefreshSharedSoon_(){
-  setTimeout(()=>agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)}),220);
-  setTimeout(()=>{if(!agSharedReady&&screen==='home')agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})},1400);
+  [0,900,2800].forEach((delay,index)=>setTimeout(()=>agRefreshShared_(true).then(ok=>{
+    if(ok&&screen==='home'&&index===0)home(true)
+  }),delay));
 }
 
 
@@ -105,7 +180,7 @@ function saveCampaign(c){
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
 function getAnyCampaign(id){return db().campaigns.find(x=>x.id===id)||null}
-function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d);agDeleteShared_(id)}
+function removeCampaign(id){const d=db();d.campaigns=d.campaigns.filter(x=>x.id!==id);saveDB(d);const pending=agPendingDeletes_();if(!pending.includes(String(id))){pending.push(String(id));agSetPendingDeletes_(pending)};agDeleteShared_(id)}
 function moveToTrash(id){const c=getAnyCampaign(id);if(!c||c.status!=='closed')return false;c.trashedAt=now();audit(c,'Mis à la corbeille');saveCampaign(c);return true}
 function restoreFromTrash(id){const c=getAnyCampaign(id);if(!c)return false;delete c.trashedAt;audit(c,'Restauré depuis la corbeille');saveCampaign(c);return true}
 function identityMode(c){return c?.settings?.identityMode||((c?.settings?.anonymous===true)?'anonymous':'optional')}
@@ -824,7 +899,9 @@ function installNavigation(){
 style();visualStyle();root();installNavigation();
 setTimeout(()=>scheduleRouteRestore(),450);
 window.addEventListener('pageshow',()=>setTimeout(()=>scheduleRouteRestore(),120));
-window.addEventListener('horticulture-users-synced',()=>setTimeout(()=>scheduleRouteRestore(),80));
-document.getElementById('logout')?.addEventListener('click',clearRoute);
+window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>scheduleRouteRestore(),80);if(screen==='home')setTimeout(()=>agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)}),180)});
+window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
+document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
 window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION};
 })();
