@@ -147,7 +147,7 @@ function trashView(){
     ).join(''):'<div class="agEmpty" style="grid-column:1/-1">La corbeille est vide.</div>')+
     '</div>';
   $('[data-back]',root()).onclick=home;
-  $('[data-trash-id]',root()).forEach(card=>{
+  $$('[data-trash-id]',root()).forEach(card=>{
     const id=card.dataset.trashId;
     $('[data-restore-item]',card).onclick=()=>{restoreFromTrash(id);home()};
     $('[data-delete-item]',card).onclick=()=>{if(confirm('Supprimer définitivement ce questionnaire et toutes ses réponses ? Cette action est irréversible.')){removeCampaign(id);trashView()}};
