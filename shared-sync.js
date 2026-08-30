@@ -1,8 +1,8 @@
 (()=>{
 const USERS_KEY='horticulture-admin-users-v2';
 const API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
-const POLL_MS=12000;
-const TIMEOUT_MS=7000;
+const POLL_MS=120000;
+const TIMEOUT_MS=5000;
 let syncing=false,ready=false,queue=Promise.resolve(),pulling=false,localWritePending=0;
 const nativeSet=Storage.prototype.setItem,nativeRemove=Storage.prototype.removeItem;
 
