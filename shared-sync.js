@@ -77,4 +77,8 @@ window.addEventListener('pageshow',()=>pull(false));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false)});
 
 window.HorticultureSharedUsers={api:API,pull:()=>pull(false),async createUser(user){localWritePending++;try{return await request({action:'createUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async updateUser(user){localWritePending++;try{return await request({action:'updateUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async deleteUser(id){localWritePending++;try{return await request({action:'deleteUser',id})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}}};
+
+if(!document.getElementById('adherentsAdminV1')){
+  const s=document.createElement('script');s.id='adherentsAdminV1';s.src='./adherents-admin-v1.js?v=1';s.async=true;document.head.appendChild(s);
+}
 })();
