@@ -78,6 +78,11 @@ function adherentsAdminArchive_(id,season){
   return{ok:false,error:'Adhérent introuvable.'};
 }
 function adherentsAdminImport_(rows,season){
+  if(rows&& !Array.isArray(rows) && rows._aiPayload){
+    const x=adherentsAnalyzeImportAI_(rows._aiPayload||{});
+    if(!x.ok)return x;
+    return{ok:true,analysis:true,adherents:x.adherents||[],warnings:x.warnings||[],model:x.model||''};
+  }
   rows=Array.isArray(rows)?rows:[];let created=0,updated=0,ignored=0,errors=[];
   rows.forEach((r,i)=>{try{r=r||{};r.season=r.season||season||adherentsAdminSeason_();const x=adherentsAdminSave_(r);if(!x.ok){ignored++;errors.push('Ligne '+(i+2)+' : '+x.error)}else if(x.created)created++;else updated++}catch(e){ignored++;errors.push('Ligne '+(i+2)+' : '+e)}});
   try{const sh=adherentsImportsSheet_();sh.appendRow([Utilities.getUuid(),'Import application',new Date().toISOString(),rows.length,created,updated,ignored,errors.slice(0,10).join(' | ')])}catch(_){ }
