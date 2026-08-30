@@ -17,9 +17,6 @@ function resetAGVisualState_(clearRoute=false){
  document.getElementById('agConsultation')?.classList.remove('active');
  if(clearRoute)clearAGRoute_();
 }
-
-// Un rafraîchissement de l'application doit toujours repartir d'un état Administration propre.
-// On ne restaure plus une ancienne vue AG cachée, source du rétrécissement Super Admin.
 resetAGVisualState_(true);
 
 function runAG_(){
@@ -74,17 +71,25 @@ function unlockSave_(){
 }
 function captureImmediateSave_(e){
  const b=e.target.closest?.('#agConsultation [data-save],#agConsultation [data-save-bottom]');
- // Les mêmes attributs existent dans d'autres écrans AG : ici on ne remplace que
- // l'enregistrement du CONCEPTEUR de questionnaire.
  if(!b||!document.querySelector('#agConsultation [data-sections]'))return;
  e.preventDefault();e.stopPropagation();
  if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
  if(saveClickLocked)return;
  saveClickLocked=true;
 
- // Les champs du concepteur écrivent déjà le brouillon local à chaque modification.
  const draft=readDraft_();
  if(!draft?.id){unlockSave_();alert('Le brouillon du questionnaire est introuvable.');return}
+ const agRoot=document.getElementById('agConsultation');
+ const titleEl=agRoot?.querySelector('[data-title]');
+ const yearEl=agRoot?.querySelector('[data-year]');
+ const identityEl=agRoot?.querySelector('[data-identity]');
+ const statusEl=agRoot?.querySelector('[data-status]');
+ if(titleEl)draft.title=titleEl.value;
+ if(yearEl)draft.year=yearEl.value;
+ draft.settings=draft.settings||{};
+ if(identityEl){draft.settings.identityMode=identityEl.value;draft.settings.anonymous=identityEl.value==='anonymous'}
+ if(statusEl)draft.status=statusEl.value;
+
  const questions=(Array.isArray(draft.sections)?draft.sections:[]).flatMap(s=>Array.isArray(s?.questions)?s.questions:[]).filter(q=>String(q?.label||'').trim());
  if(!questions.length){unlockSave_();alert('Ajoute au moins une question.');return}
 
@@ -101,10 +106,7 @@ function captureImmediateSave_(e){
    x.disabled=true;x.setAttribute('aria-busy','true');x.textContent='Enregistré ✓';
  });
 
- // 1. Enregistrement LOCAL synchrone = immédiat, une seule fois.
  writeCampaignLocal_(draft);
- // 2. Ouverture immédiate de Consultation AG. Le module natif voit alors le nouvel
- //    élément local et son rafraîchissement serveur l'envoie à Google Sheets en arrière-plan.
  clearAGRoute_();
  setTimeout(()=>{
    try{window.HorticultureAG?.open?.()}catch(err){console.error('Ouverture après enregistrement AG',err)}
@@ -117,7 +119,6 @@ function wire(b){
  b.dataset.agMobileOpen='1';b.type='button';b.style.touchAction='manipulation';b.onclick=openAG;
 }
 
-// Tout retour vers Accueil / logo nettoie complètement l'ancien état AG.
 document.addEventListener('click',e=>{
  const home=e.target.closest?.('[data-go="home"],.admBrand,.admBrand img,.top b,.welcome img,.dhead img');
  if(!home)return;
