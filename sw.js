@@ -1,4 +1,4 @@
-const VERSION='v114-ag-route-transmission-fix';
+const VERSION='v115-ag-native-navigation-restored';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -32,11 +32,17 @@ self.addEventListener('message',e=>{
 self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url),isAG=u.pathname.endsWith('/ag-consultation-v1.js'),isAGTile=u.pathname.endsWith('/ag-module-tile-v1.js');
   if(!isAG&&!isAGTile)return;
+
   e.respondWith((async()=>{
     const r=await fetch(e.request,{cache:'no-store'});
-    if(isAGTile)return new Response(await r.text(),{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
+    if(isAGTile){
+      return new Response(await r.text(),{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
+    }
+
     let source=await r.text();
 
+    // Uniquement le correctif d'enregistrement immédiat. Aucune réécriture de campaign(),
+    // des onglets, de la route ou de la restauration au rafraîchissement.
     source=source.replace(/  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,`  let persistBusy=false;
   function persist(){
     if(persistBusy)return;
@@ -54,49 +60,10 @@ self.addEventListener('fetch',e=>{
   }
   $('[data-back]'`);
 
-    // Conserver la route Consultation AG au rafraîchissement. Le code natif restaure
-    // le questionnaire et l'onglet tant que la session AG est toujours active.
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
+    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:36};");
 
-    // Transmission fait partie du rendu natif de la fiche.
-    source=source.replace(
-      "    '<button class=\"agBtn\" data-print>Imprimer</button></div></div>'+",
-      "    '<button class=\"agBtn agTransmitPrimary\" data-ag-transmit-primary>Transmettre aux adhérents</button><button class=\"agBtn\" data-print>Imprimer</button></div></div>'+"
-    );
-    source=source.replace(
-      "      '<button class=\"agTab '+(tab==='settings'?'active':'')+'\" data-tab=\"settings\">Paramètres</button>'+",
-      "      '<button class=\"agTab '+(tab==='settings'?'active':'')+'\" data-tab=\"settings\">Paramètres</button><button class=\"agTab '+(tab==='transmission'?'active':'')+'\" data-ag-dist>Transmission</button>'+"
-    );
-
-    // Les deux accès Transmission appellent directement le module, avec une petite
-    // attente si son fichier termine juste de se charger.
-    source=source.replace(
-      "  $$('[data-tab]',root()).forEach(b=>b.onclick=()=>campaign(id,b.dataset.tab));",
-      `  $$('[data-tab]',root()).forEach(b=>b.onclick=()=>campaign(id,b.dataset.tab));
-  const openTransmission_=()=>{
-    saveRoute({screen:'campaign',id,tab:'transmission'});
-    const run=(tries=0)=>{
-      if(window.HorticultureAGTransmission?.open){window.HorticultureAGTransmission.open(id);return}
-      if(tries<20)setTimeout(()=>run(tries+1),50);
-    };
-    run();
-  };
-  $('[data-ag-transmit-primary]',root())?.addEventListener('click',openTransmission_);
-  $('[data-ag-dist]',root())?.addEventListener('click',openTransmission_);`
-    );
-
-    // Une route restaurée sur Transmission ne doit pas tomber dans Paramètres.
-    source=source.replace(
-      "  if(tab==='overview')overview(c);else if(tab==='collect')collect(c);else if(tab==='responses')responses(c);else if(tab==='results')results(c);else settings(c);",
-      `  if(tab==='overview')overview(c);else if(tab==='collect')collect(c);else if(tab==='responses')responses(c);else if(tab==='results')results(c);else if(tab==='transmission'){
-    $('[data-content]',root()).innerHTML='<div class="agPanel"><h3>Transmission aux adhérents</h3><div class="agMeta">Chargement…</div></div>';
-    setTimeout(()=>window.HorticultureAGTransmission?.open?.(id),0);
-  }else settings(c);`
-    );
-
-    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:35};");
-
-    source+=`\n;(()=>{if(!document.getElementById('agTransmissionNative')){const s=document.createElement('script');s.id='agTransmissionNative';s.src='./ag-transmission-native.js?v=2';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
+    source+=`\n;(()=>{if(!document.getElementById('agTransmissionSafe')){const s=document.createElement('script');s.id='agTransmissionSafe';s.src='./ag-transmission-safe.js?v=1';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
 
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
