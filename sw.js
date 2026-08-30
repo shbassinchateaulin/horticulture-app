@@ -1,4 +1,4 @@
-const VERSION='v109-ag-live-responses';
+const VERSION='v110-ag-distribution-stable';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -16,50 +16,29 @@ self.addEventListener('notificationclick',e=>{
   e.waitUntil((async()=>{
     const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     for(const c of list){
-      if('focus' in c){
-        await c.focus();
-        try{c.postMessage({type:'horticulture-notification-click',data});}catch(_){}
-        return;
-      }
+      if('focus' in c){await c.focus();try{c.postMessage({type:'horticulture-notification-click',data});}catch(_){}return;}
     }
     if(self.clients.openWindow)return self.clients.openWindow(target);
   })());
 });
 
 self.addEventListener('message',e=>{
-  const m=e.data||{};
-  if(m.type!=='horticulture-show-notification')return;
+  const m=e.data||{};if(m.type!=='horticulture-show-notification')return;
   const n=m.notification||{};
   e.waitUntil(self.registration.showNotification(n.title||'Administration — Horticulture',{
-    body:n.message||'',
-    icon:'./app-icon-botanical-v4.png',
-    badge:'./app-icon-192.png',
-    tag:n.tag||('horticulture-'+String(n.id||Date.now())),
-    renotify:false,
+    body:n.message||'',icon:'./app-icon-botanical-v4.png',badge:'./app-icon-192.png',tag:n.tag||('horticulture-'+String(n.id||Date.now())),renotify:false,
     data:{url:'./',type:n.type||'info',notificationId:n.id||'',suggestionId:n.suggestionId||''}
   }));
 });
 
 self.addEventListener('fetch',e=>{
-  const u=new URL(e.request.url);
-  const isAG=u.pathname.endsWith('/ag-consultation-v1.js');
-  const isAGTile=u.pathname.endsWith('/ag-module-tile-v1.js');
+  const u=new URL(e.request.url),isAG=u.pathname.endsWith('/ag-consultation-v1.js'),isAGTile=u.pathname.endsWith('/ag-module-tile-v1.js');
   if(!isAG&&!isAGTile)return;
-
   e.respondWith((async()=>{
     const r=await fetch(e.request,{cache:'no-store'});
-    if(isAGTile){
-      return new Response(await r.text(),{
-        status:r.status,statusText:r.statusText,
-        headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}
-      });
-    }
-
+    if(isAGTile)return new Response(await r.text(),{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
     let source=await r.text();
-
-    source=source.replace(
-      /  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,
-`  let persistBusy=false;
+    source=source.replace(/  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,`  let persistBusy=false;
   function persist(){
     if(persistBusy)return;
     syncHeader();
@@ -70,39 +49,17 @@ self.addEventListener('fetch',e=>{
     persistBusy=true;
     $$('[data-save],[data-save-bottom]',root()).forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true');b.textContent='Enregistré ✓'});
     audit(draft,'Enregistrement du questionnaire',allQuestions(draft).length+' question(s)');
-    const saved=JSON.parse(JSON.stringify(draft));
-    const id=saved.id;
-    saveCampaign(saved,false);
-    activeId=id;
-    clearDraft();
-    draft=null;
-    campaign(id,'overview');
+    const saved=JSON.parse(JSON.stringify(draft)),id=saved.id;
+    saveCampaign(saved,false);activeId=id;clearDraft();draft=null;campaign(id,'overview');
     setTimeout(()=>{agPushCampaign_(saved).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e))},0);
   }
-  $('[data-back]'`
-    );
-
+  $('[data-back]'`);
     source=source.replace("setTimeout(()=>scheduleRouteRestore(),450);","clearRoute();setAGActive_(false);");
-    source=source.replace(
-      "window.addEventListener('pageshow',()=>{setTimeout(()=>scheduleRouteRestore(),120);setTimeout(agWarmShared_,500)});",
-      "window.addEventListener('pageshow',()=>{clearRoute();setAGActive_(false);setTimeout(agWarmShared_,500)});"
-    );
-    source=source.replace(
-      "  setTimeout(()=>scheduleRouteRestore(),80);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))",
-      "  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))"
-    );
+    source=source.replace("window.addEventListener('pageshow',()=>{setTimeout(()=>scheduleRouteRestore(),120);setTimeout(agWarmShared_,500)});","window.addEventListener('pageshow',()=>{clearRoute();setAGActive_(false);setTimeout(agWarmShared_,500)});");
+    source=source.replace("  setTimeout(()=>scheduleRouteRestore(),80);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))","  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))");
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
-
-    source=source.replace(
-      "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};",
-      "window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};"
-    );
-
-    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=3';s.async=true;document.head.appendChild(s)})();`;
-
-    return new Response(source,{
-      status:r.status,statusText:r.statusText,
-      headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}
-    });
+    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};");
+    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=1';s.async=true;document.head.appendChild(s)})();`;
+    return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
 });
