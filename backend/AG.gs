@@ -147,7 +147,6 @@ function agSaveCampaign_(campaign,userId,generation){
   if(agIsDeleted_(campaign.id))return{ok:false,error:'Ce questionnaire a été supprimé définitivement.',deleted:true,campaignId:String(campaign.id)};
   const lock=LockService.getScriptLock();lock.waitLock(20000);
   try{
-    agMarkDeleted_(campaignId,auth.user&&auth.user.id||userId);
     const csh=agSheet_(AG_CAMPAIGNS_SHEET,AG_CAMPAIGN_HEADERS);
     const rsh=agSheet_(AG_RESPONSES_SHEET,AG_RESPONSE_HEADERS);
     const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);
@@ -190,6 +189,7 @@ function agDeleteCampaign_(campaignId,userId,generation){
   agEnsureDb_();
   const lock=LockService.getScriptLock();lock.waitLock(20000);
   try{
+    agMarkDeleted_(campaignId,auth.user&&auth.user.id||userId);
     const csh=agSheet_(AG_CAMPAIGNS_SHEET,AG_CAMPAIGN_HEADERS);
     const rsh=agSheet_(AG_RESPONSES_SHEET,AG_RESPONSE_HEADERS);
     const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);
