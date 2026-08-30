@@ -1,0 +1,97 @@
+name: Fix AG instant save and navigation
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-ag-instant-save-navigation.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Consultation AG
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('ag-consultation-v1.js')
+          s=p.read_text()
+
+          old=re.compile(r"  async function persist\(\)\{.*?\n  \}\n  \$\('\[data-back\]'", re.S)
+          replacement=r'''  let persistBusy=false;
+  function persist(){
+    if(persistBusy)return;
+    syncHeader();
+    draft.title=draft.title.trim()||'Questionnaire Assemblée générale';
+    draft.sections.forEach(s=>{s.title=(s.title||'Section').trim()||'Section';s.questions=(s.questions||[]).filter(q=>(q.label||'').trim())});
+    if(!allQuestions(draft).length)return alert('Ajoute au moins une question.');
+    persistBusy=true;
+    $$('[data-save],[data-save-bottom]',root()).forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true')});
+    audit(draft,'Enregistrement du questionnaire',allQuestions(draft).length+' question(s)');
+    const saved=JSON.parse(JSON.stringify(draft));
+    const id=saved.id;
+    saveCampaign(saved,false);
+    activeId=id;
+    clearDraft();
+    draft=null;
+    campaign(activeId,'overview');
+    Promise.resolve().then(()=>agPushCampaign_(saved)).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e));
+  }
+  $('[data-back]'''
+          s2,n=old.subn(replacement,s,count=1)
+          if n!=1:
+              raise SystemExit(f'persist patch failed: {n} match')
+          s=s2
+
+          # Corrige aussi le forEach erroné dans le fallback d'ouverture.
+          s=s.replace("        $('.view').forEach(v=>v.classList.remove('active'));", "        $$('.view').forEach(v=>v.classList.remove('active'));")
+          s=s.replace("        $('.view').forEach(v=>v.classList.remove('active'));", "        $$('.view').forEach(v=>v.classList.remove('active'));")
+
+          # Navigation robuste : tout retour Accueil/logo nettoie complètement l'état AG.
+          needle="""  document.addEventListener('click',e=>{\n    const go=e.target.closest?.('[data-go]');\n    if(!go||!document.body.classList.contains('agWorkspaceMode'))return;\n    document.body.classList.remove('agWorkspaceMode');\n    root().classList.remove('active');\n    clearRoute();\n    setAGActive_(false);\n  },true);"""
+          repl="""  document.addEventListener('click',e=>{\n    const go=e.target.closest?.('[data-go]');\n    const homeLogo=e.target.closest?.('.top b,.welcome img,.dhead img');\n    if((!go&&!homeLogo)||!document.body.classList.contains('agWorkspaceMode'))return;\n    document.body.classList.remove('agWorkspaceMode');\n    root().classList.remove('active');\n    clearRoute();\n    setAGActive_(false);\n    if(homeLogo){\n      $$('.view').forEach(v=>v.classList.remove('active'));\n      $('#home')?.classList.add('active');\n    }\n  },true);"""
+          if needle not in s:
+              raise SystemExit('navigation cleanup block not found')
+          s=s.replace(needle,repl,1)
+
+          # Une ouverture AG repart toujours d'un état visuel propre.
+          s=s.replace("function openAGSafe_(){\n  document.getElementById('drawer')?.classList.remove('open');\n  setAGActive_(true);", "function openAGSafe_(){\n  document.getElementById('drawer')?.classList.remove('open');\n  document.body.classList.remove('agWorkspaceMode');\n  root().classList.remove('active');\n  setAGActive_(true);")
+
+          s=s.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};", "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:32};")
+          p.write_text(s)
+          PY
+
+      - name: Simplify service worker AG hotfix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text()
+          # Le correctif est maintenant directement dans ag-consultation-v1.js :
+          # on supprime l'interception fragile du module AG.
+          marker="// Consultation AG : correctifs chargés à la volée pour éviter tout blocage UI."
+          if marker in s:
+              s=s.split(marker,1)[0].rstrip()+"\n"
+          s=s.replace("const VERSION='v99-ag-instant-save';", "const VERSION='v100-ag-native-fix';")
+          p.write_text(s)
+          PY
+
+      - name: Harden AG tile reopening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('ag-module-tile-v1.js')
+          s=p.read_text()
+          s=s.replace("function runAG_(){\n document.getElementById('drawer')?.classList.remove('open');", "function runAG_(){\n document.getElementById('drawer')?.classList.remove('open');\n document.body.classList.remove('agWorkspaceMode');\n document.getElementById('agConsultation')?.classList.remove('active');")
+          p.write_text(s)
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ag-consultation-v1.js ag-module-tile-v1.js sw.js
+          git diff --cached --quiet || git commit -m 'Fix AG instant save and Super Admin navigation state'
+          git push
