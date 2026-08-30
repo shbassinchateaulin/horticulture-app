@@ -2,6 +2,7 @@
 // À ajouter dans le même projet Apps Script que Code.gs et Notifications.gs.
 // Les onglets sont créés automatiquement dans le classeur lié au projet.
 
+const AG_DB_SPREADSHEET_ID='1FTCq4E3AA6jRfZpJBQEJPGTYzNw6mN4u3d2cpA4ARkU';
 const AG_CAMPAIGNS_SHEET='AG Questionnaires';
 const AG_RESPONSES_SHEET='AG Réponses';
 const AG_AUDIT_SHEET='AG Journal';
@@ -16,8 +17,9 @@ const AG_RESPONSE_HEADERS=[
 ];
 const AG_AUDIT_HEADERS=['id','campaignId','at','action','detail'];
 
+function agDb_(){return SpreadsheetApp.openById(AG_DB_SPREADSHEET_ID)}
 function agSheet_(name,headers){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  const ss=agDb_();
   let sh=ss.getSheetByName(name);
   if(!sh)sh=ss.insertSheet(name);
   if(sh.getLastRow()===0)sh.appendRow(headers);
@@ -176,11 +178,11 @@ function agDeleteCampaign_(campaignId,userId,generation){
 function agDatabaseInfo_(userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   agEnsureDb_();
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  const ss=agDb_();
   return{ok:true,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),sheets:[AG_CAMPAIGNS_SHEET,AG_RESPONSES_SHEET,AG_AUDIT_SHEET]};
 }
 function initialiserBaseConsultationAG(){
   agEnsureDb_();
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  const ss=agDb_();
   return 'Base Consultation AG prête dans « '+ss.getName()+' »';
 }
