@@ -5,80 +5,16 @@ const POLL_MS=120000;
 const TIMEOUT_MS=5000;
 let syncing=false,ready=false,queue=Promise.resolve(),pulling=false,localWritePending=0;
 const nativeSet=Storage.prototype.setItem,nativeRemove=Storage.prototype.removeItem;
-
-async function fetchWithTimeout(url,options={}){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),TIMEOUT_MS);
-  try{return await fetch(url,{...options,signal:controller.signal})}
-  finally{clearTimeout(timer)}
-}
-
-async function request(body){
-  const r=await fetchWithTimeout(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-  const text=await r.text();
-  let j=null;try{j=JSON.parse(text)}catch{}
-  if(!r.ok||!j?.ok)throw new Error(j?.error||`HTTP ${r.status}`);
-  return j;
-}
-
-async function listRemote(){
-  const r=await fetchWithTimeout(API+'?action=listUsers&t='+Date.now(),{cache:'no-store'});
-  const text=await r.text();
-  let j=null;try{j=JSON.parse(text)}catch{}
-  if(!r.ok||!j?.ok||!Array.isArray(j.users))throw new Error(j?.error||'Lecture impossible');
-  return j.users;
-}
-
+async function fetchWithTimeout(url,options={}){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),TIMEOUT_MS);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
+async function request(body){const r=await fetchWithTimeout(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});const text=await r.text();let j=null;try{j=JSON.parse(text)}catch{}if(!r.ok||!j?.ok)throw new Error(j?.error||`HTTP ${r.status}`);return j}
+async function listRemote(){const r=await fetchWithTimeout(API+'?action=listUsers&t='+Date.now(),{cache:'no-store'});const text=await r.text();let j=null;try{j=JSON.parse(text)}catch{}if(!r.ok||!j?.ok||!Array.isArray(j.users))throw new Error(j?.error||'Lecture impossible');return j.users}
 function emit(users,source='remote'){window.dispatchEvent(new CustomEvent('horticulture-users-synced',{detail:{users,source}}))}
 function writeLocal(users){syncing=true;nativeSet.call(localStorage,USERS_KEY,JSON.stringify(users));syncing=false;emit(users,'remote')}
-
-async function pull(force=false){
-  if(pulling||(!force&&localWritePending>0)||(!force&&document.hidden))return null;
-  pulling=true;
-  try{
-    const users=await listRemote(),before=localStorage.getItem(USERS_KEY)||'[]',after=JSON.stringify(users);
-    if(before!==after)writeLocal(users);
-    ready=true;
-    return users;
-  }catch(e){
-    console.warn('Shared users pull failed',e);
-    return null;
-  }finally{pulling=false}
-}
-
-async function syncChange(oldUsers,newUsers){
-  const oldMap=new Map((oldUsers||[]).map(u=>[String(u.id),u])),newMap=new Map((newUsers||[]).map(u=>[String(u.id),u]));
-  for(const[id,u]of newMap){const old=oldMap.get(id);if(!old)await request({action:'createUser',user:u});else if(JSON.stringify(old)!==JSON.stringify(u))await request({action:'updateUser',user:u})}
-  for(const[id]of oldMap)if(!newMap.has(id))await request({action:'deleteUser',id});
-}
-
-Storage.prototype.setItem=function(k,v){
-  if(this!==localStorage||k!==USERS_KEY||syncing)return nativeSet.call(this,k,v);
-  let oldUsers=[],newUsers=[];
-  try{oldUsers=JSON.parse(localStorage.getItem(USERS_KEY)||'[]');newUsers=JSON.parse(v||'[]')}catch{return nativeSet.call(this,k,v)}
-  nativeSet.call(this,k,v);emit(newUsers,'local');if(!ready)return;
-  localWritePending++;
-  queue=queue.then(async()=>{try{await syncChange(oldUsers,newUsers)}finally{localWritePending=Math.max(0,localWritePending-1)}await pull(true)}).catch(async e=>{localWritePending=Math.max(0,localWritePending-1);console.warn('Shared users write failed',e);await pull(true)});
-};
-
-Storage.prototype.removeItem=function(k){
-  if(this===localStorage&&k===USERS_KEY&&!syncing){
-    const old=localStorage.getItem(k);nativeRemove.call(this,k);emit([],'local');
-    if(ready&&old){let a=[];try{a=JSON.parse(old)}catch{};localWritePending++;queue=queue.then(async()=>{try{for(const u of a)await request({action:'deleteUser',id:u.id})}finally{localWritePending=Math.max(0,localWritePending-1)}await pull(true)}).catch(async e=>{localWritePending=Math.max(0,localWritePending-1);console.warn(e);await pull(true)})}
-    return;
-  }
-  return nativeRemove.call(this,k);
-};
-
-setTimeout(()=>pull(true),250);
-setInterval(()=>pull(false),POLL_MS);
-window.addEventListener('focus',()=>pull(false));
-window.addEventListener('pageshow',()=>pull(false));
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false)});
-
+async function pull(force=false){if(pulling||(!force&&localWritePending>0)||(!force&&document.hidden))return null;pulling=true;try{const users=await listRemote(),before=localStorage.getItem(USERS_KEY)||'[]',after=JSON.stringify(users);if(before!==after)writeLocal(users);ready=true;return users}catch(e){console.warn('Shared users pull failed',e);return null}finally{pulling=false}}
+async function syncChange(oldUsers,newUsers){const oldMap=new Map((oldUsers||[]).map(u=>[String(u.id),u])),newMap=new Map((newUsers||[]).map(u=>[String(u.id),u]));for(const[id,u]of newMap){const old=oldMap.get(id);if(!old)await request({action:'createUser',user:u});else if(JSON.stringify(old)!==JSON.stringify(u))await request({action:'updateUser',user:u})}for(const[id]of oldMap)if(!newMap.has(id))await request({action:'deleteUser',id})}
+Storage.prototype.setItem=function(k,v){if(this!==localStorage||k!==USERS_KEY||syncing)return nativeSet.call(this,k,v);let oldUsers=[],newUsers=[];try{oldUsers=JSON.parse(localStorage.getItem(USERS_KEY)||'[]');newUsers=JSON.parse(v||'[]')}catch{return nativeSet.call(this,k,v)}nativeSet.call(this,k,v);emit(newUsers,'local');if(!ready)return;localWritePending++;queue=queue.then(async()=>{try{await syncChange(oldUsers,newUsers)}finally{localWritePending=Math.max(0,localWritePending-1)}await pull(true)}).catch(async e=>{localWritePending=Math.max(0,localWritePending-1);console.warn('Shared users write failed',e);await pull(true)})};
+Storage.prototype.removeItem=function(k){if(this===localStorage&&k===USERS_KEY&&!syncing){const old=localStorage.getItem(k);nativeRemove.call(this,k);emit([],'local');if(ready&&old){let a=[];try{a=JSON.parse(old)}catch{};localWritePending++;queue=queue.then(async()=>{try{for(const u of a)await request({action:'deleteUser',id:u.id})}finally{localWritePending=Math.max(0,localWritePending-1)}await pull(true)}).catch(async e=>{localWritePending=Math.max(0,localWritePending-1);console.warn(e);await pull(true)})}return}return nativeRemove.call(this,k)};
+setTimeout(()=>pull(true),250);setInterval(()=>pull(false),POLL_MS);window.addEventListener('focus',()=>pull(false));window.addEventListener('pageshow',()=>pull(false));document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false)});
 window.HorticultureSharedUsers={api:API,pull:()=>pull(false),async createUser(user){localWritePending++;try{return await request({action:'createUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async updateUser(user){localWritePending++;try{return await request({action:'updateUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async deleteUser(id){localWritePending++;try{return await request({action:'deleteUser',id})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}}};
-
-if(!document.getElementById('adherentsAdminV1')){
-  const s=document.createElement('script');s.id='adherentsAdminV1';s.src='./adherents-admin-v1.js?v=1';s.async=true;document.head.appendChild(s);
-}
+if(!document.getElementById('adherentsAdminV1')){const s=document.createElement('script');s.id='adherentsAdminV1';s.src='./adherents-admin-v1.js?v=2';s.async=true;document.head.appendChild(s)}
 })();
