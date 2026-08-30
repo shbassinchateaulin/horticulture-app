@@ -12,7 +12,7 @@ const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
 const AG_PENDING_DELETE='horticulture-ag-pending-delete-v1';
-let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agSharedFailed=false,agDraftPushTimer=null;
+let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agSharedFailed=false,agPendingWrites=0,agLastSyncAt=0,agDraftPushTimer=null;
 
 function saveRoute(route){
   try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
@@ -79,16 +79,17 @@ async function agEnsureAuth_(){
 
   try{await window.HorticultureSessions?.check?.()}catch(_){}
   auth=agAuth_();if(auth)return auth;
-  for(const ms of [450,1000,2200]){
+  for(const ms of [200,650,1400]){
     await agSleep_(ms);
     try{await window.HorticultureSessions?.check?.()}catch(_){}
     auth=agAuth_();if(auth)return auth;
   }
   return null;
 }
-async function agFetchJson_(url,options){
+async function agFetchJson_(url,options,maxAttempts=4){
   let last=null;
-  for(let i=0;i<4;i++){
+  const attempts=Math.max(1,Number(maxAttempts)||1);
+  for(let i=0;i<attempts;i++){
     try{
       const r=await fetch(url,{...(options||{}),cache:'no-store'});
       const text=await r.text();
@@ -96,9 +97,19 @@ async function agFetchJson_(url,options){
       if(r.ok&&j)return j;
       last=new Error(j?.error||('HTTP '+r.status));
     }catch(e){last=e}
-    if(i<3)await agSleep_([500,1600,3400][i]);
+    if(i<attempts-1)await agSleep_([350,900,1800][Math.min(i,2)]);
   }
   throw last||new Error('Connexion à la base Consultation AG impossible');
+}
+function agSyncLabel_(){
+  if(agPendingWrites>0)return 'Synchronisation en cours…';
+  if(agSharedReady)return 'Base partagée connectée — données à jour';
+  if(agSharedFailed)return 'Connexion serveur en attente — nouvelle tentative automatique';
+  return 'Connexion à la base partagée…';
+}
+function agUpdateSyncLabel_(){
+  const el=$('[data-ag-sync-status]',root());
+  if(el)el.innerHTML=agSvg('lock')+agSyncLabel_();
 }
 async function agPostShared_(action,payload={}){
   const auth=await agEnsureAuth_();if(!auth)return null;
@@ -113,24 +124,34 @@ function agSetPendingDeletes_(ids){
   localStorage.setItem(AG_PENDING_DELETE,JSON.stringify([...new Set((ids||[]).map(String).filter(Boolean))]));
 }
 async function agPushCampaign_(campaign){
+  if(!campaign?.id)return false;
+  agPendingWrites++;agUpdateSyncLabel_();
   try{
-    if(!campaign?.id)return false;
     const copy=JSON.parse(JSON.stringify(campaign));
     const j=await agPostShared_('saveAGCampaign',{campaign:copy});
     if(!j)return false;
-    agSharedReady=true;return true;
-  }catch(e){console.warn('Base Consultation AG — enregistrement',e);return false}
+    agSharedReady=true;agSharedFailed=false;agLastSyncAt=Date.now();return true;
+  }catch(e){
+    agSharedFailed=true;
+    console.warn('Base Consultation AG — enregistrement',e);return false
+  }finally{
+    agPendingWrites=Math.max(0,agPendingWrites-1);agUpdateSyncLabel_();
+  }
 }
 async function agDeleteShared_(campaignId){
   const id=String(campaignId||'');if(!id)return false;
+  agPendingWrites++;agUpdateSyncLabel_();
   try{
     const j=await agPostShared_('deleteAGCampaign',{campaignId:id});
     if(!j)throw new Error('Session indisponible');
     agSetPendingDeletes_(agPendingDeletes_().filter(x=>x!==id));
-    agSharedReady=true;return true;
+    agSharedReady=true;agSharedFailed=false;agLastSyncAt=Date.now();return true;
   }catch(e){
+    agSharedFailed=true;
     const pending=agPendingDeletes_();if(!pending.includes(id)){pending.push(id);agSetPendingDeletes_(pending)}
     console.warn('Base Consultation AG — suppression différée',e);return false
+  }finally{
+    agPendingWrites=Math.max(0,agPendingWrites-1);agUpdateSyncLabel_();
   }
 }
 async function agFlushPendingDeletes_(){
@@ -149,13 +170,12 @@ async function agRefreshShared_(force=false){
   agSharedBusy=true;
   try{
     const auth=await agEnsureAuth_();if(!auth)return false;
-    await agFlushPendingDeletes_();
     const u=new URL(AG_API);
     u.searchParams.set('action','listAGCampaigns');
     u.searchParams.set('userId',auth.userId);
     u.searchParams.set('generation',auth.generation);
     u.searchParams.set('t',Date.now());
-    const j=await agFetchJson_(u.toString(),{cache:'no-store'});
+    const j=await agFetchJson_(u.toString(),{cache:'no-store'},1);
     if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
 
     const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns.slice();
@@ -180,12 +200,18 @@ async function agRefreshShared_(force=false){
     }
 
     const remoteMap=new Map(remote.filter(x=>x?.id).map(x=>[String(x.id),x]));
-    for(const item of mergedList){
+    const toPush=mergedList.filter(item=>{
       const r=remoteMap.get(String(item.id));
-      if(!r||agTime_(item.updatedAt)>agTime_(r.updatedAt))await agPushCampaign_(item);
-    }
+      return !r||agTime_(item.updatedAt)>agTime_(r.updatedAt);
+    });
 
-    agSharedReady=true;agSharedFailed=false;agSharedLastLoad=Date.now();return true;
+    agSharedReady=true;agSharedFailed=false;agSharedLastLoad=Date.now();agLastSyncAt=Date.now();
+    agUpdateSyncLabel_();
+
+    // Les écritures locales partent en arrière-plan : elles ne bloquent plus l'ouverture de l'écran.
+    if(toPush.length)Promise.allSettled(toPush.map(agPushCampaign_));
+    if(agPendingDeletes_().length)setTimeout(()=>agFlushPendingDeletes_(),0);
+    return true;
   }catch(e){
     agSharedFailed=true;
     console.warn('Base Consultation AG — lecture',e);
@@ -193,9 +219,18 @@ async function agRefreshShared_(force=false){
   }finally{agSharedBusy=false}
 }
 function agRefreshSharedSoon_(){
-  [0,900,2800].forEach(delay=>setTimeout(()=>agRefreshShared_(true).then(ok=>{
-    if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true)
-  }),delay));
+  const redraw=ok=>{
+    if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true);
+    else agUpdateSyncLabel_();
+  };
+  agRefreshShared_(true).then(ok=>{
+    redraw(ok);
+    if(ok)return;
+    setTimeout(()=>agRefreshShared_(true).then(ok2=>{
+      redraw(ok2);
+      if(!ok2)setTimeout(()=>agRefreshShared_(true).then(redraw),1800);
+    }),700);
+  });
 }
 function agStateFingerprint_(){
   return JSON.stringify(db().campaigns.map(c=>[
@@ -454,7 +489,7 @@ function home(fromShared=false){
         '<div class="agSearchArea"><label class="agSearchBox">'+agSvg('search')+'<input data-search placeholder="Rechercher..."></label><button class="agFilterBtn" data-sort>'+agSvg('filter')+'<span>Filtrer</span><span>⌄</span></button></div>'+
       '</section>'+
       '<section class="agList" data-list></section>'+
-      '<div class="agLocalFoot">'+agSvg('lock')+(agSharedReady?'Données synchronisées avec la base partagée de l’association':agSharedFailed?'Synchronisation serveur en attente — nouvelle tentative automatique':'Connexion à la base partagée…')+'</div>'+
+      '<div class="agLocalFoot" data-ag-sync-status>'+agSvg('lock')+agSyncLabel_()+'</div>'+
     '</main>'+
   '</div>'+
   '<input data-restore-file type="file" accept=".json,application/json" hidden>';
@@ -1106,5 +1141,5 @@ window.addEventListener('horticulture-users-synced',()=>{
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();setAGActive_(false);document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:27};
+window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:28};
 })();
