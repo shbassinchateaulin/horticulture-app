@@ -1,4 +1,4 @@
-const VERSION='v108-ag-share-qr';
+const VERSION='v109-ag-live-responses';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -57,8 +57,6 @@ self.addEventListener('fetch',e=>{
 
     let source=await r.text();
 
-    // Enregistrement natif du concepteur : local immédiat, puis ouverture
-    // automatique de la fiche du questionnaire et synchro Sheets en arrière-plan.
     source=source.replace(
       /  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,
 `  let persistBusy=false;
@@ -84,7 +82,6 @@ self.addEventListener('fetch',e=>{
   $('[data-back]'`
     );
 
-    // Une ancienne route AG ne doit jamais être restaurée automatiquement après refresh.
     source=source.replace("setTimeout(()=>scheduleRouteRestore(),450);","clearRoute();setAGActive_(false);");
     source=source.replace(
       "window.addEventListener('pageshow',()=>{setTimeout(()=>scheduleRouteRestore(),120);setTimeout(agWarmShared_,500)});",
@@ -96,14 +93,12 @@ self.addEventListener('fetch',e=>{
     );
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
 
-    // Expose la navigation directe vers une fiche existante.
     source=source.replace(
       "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};",
       "window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};"
     );
 
-    // Charge le module de diffusion des consultations aux adhérents.
-    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=2';s.async=true;document.head.appendChild(s)})();`;
+    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=3';s.async=true;document.head.appendChild(s)})();`;
 
     return new Response(source,{
       status:r.status,statusText:r.statusText,
