@@ -15,5 +15,5 @@ async function disconnectOthers(){const s=session();if(!s?.id)throw new Error('A
 // Une saisie manuelle du mot de passe crée une nouvelle session légitime :
 // on rebinde alors cette session sur la génération serveur courante.
 document.addEventListener('submit',e=>{if(e.target?.id!=='loginForm')return;sessionStorage.setItem(FK,'1');clearGeneration();setTimeout(state,900)},true);
-setTimeout(state,500);setInterval(state,3000);window.addEventListener('focus',state);document.addEventListener('visibilitychange',()=>{if(!document.hidden)state()});window.HorticultureSessions={check:state,disconnectOthers,logout:()=>{clearSession();location.reload()}};
+setTimeout(state,500);setInterval(state,60000);window.addEventListener('focus',state);document.addEventListener('visibilitychange',()=>{if(!document.hidden)state()});window.HorticultureSessions={check:state,disconnectOthers,logout:()=>{clearSession();location.reload()}};
 })();
