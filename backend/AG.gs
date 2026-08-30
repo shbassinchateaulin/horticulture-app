@@ -6,6 +6,7 @@ const AG_DB_SPREADSHEET_ID='1FTCq4E3AA6jRfZpJBQEJPGTYzNw6mN4u3d2cpA4ARkU';
 const AG_CAMPAIGNS_SHEET='AG Questionnaires';
 const AG_RESPONSES_SHEET='AG Réponses';
 const AG_AUDIT_SHEET='AG Journal';
+const AG_DELETIONS_SHEET='AG Suppressions';
 
 const AG_CAMPAIGN_HEADERS=[
   'id','title','year','status','createdAt','updatedAt','trashedAt',
@@ -16,6 +17,7 @@ const AG_RESPONSE_HEADERS=[
   'channel','createdAt','updatedAt','answersJson','completion'
 ];
 const AG_AUDIT_HEADERS=['id','campaignId','at','action','detail'];
+const AG_DELETION_HEADERS=['campaignId','deletedAt','deletedBy'];
 
 function agDb_(){return SpreadsheetApp.openById(AG_DB_SPREADSHEET_ID)}
 function agSheet_(name,headers){
@@ -33,6 +35,7 @@ function agEnsureDb_(){
   agSheet_(AG_CAMPAIGNS_SHEET,AG_CAMPAIGN_HEADERS);
   agSheet_(AG_RESPONSES_SHEET,AG_RESPONSE_HEADERS);
   agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);
+  agSheet_(AG_DELETIONS_SHEET,AG_DELETION_HEADERS);
 }
 function agJsonParse_(v,fallback){
   try{return JSON.parse(String(v||''))}catch(_){return fallback}
@@ -91,6 +94,29 @@ function agAuditFromRow_(r){
     detail:String(r[4]||'')
   };
 }
+function agDeletedIds_(){
+  const sh=agSheet_(AG_DELETIONS_SHEET,AG_DELETION_HEADERS);
+  if(sh.getLastRow()<2)return[];
+  return sh.getDataRange().getValues().slice(1).filter(r=>r[0]).map(r=>String(r[0]));
+}
+function agIsDeleted_(campaignId){
+  const id=String(campaignId||'');
+  return agDeletedIds_().includes(id);
+}
+function agMarkDeleted_(campaignId,userId){
+  const sh=agSheet_(AG_DELETIONS_SHEET,AG_DELETION_HEADERS);
+  const id=String(campaignId||''),at=new Date().toISOString(),by=String(userId||'');
+  if(sh.getLastRow()>=2){
+    const vals=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();
+    for(let i=0;i<vals.length;i++){
+      if(String(vals[i][0])===id){
+        sh.getRange(i+2,1,1,3).setValues([[id,at,by]]);
+        return;
+      }
+    }
+  }
+  sh.appendRow([id,at,by]);
+}
 function agListCampaigns_(userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   agEnsureDb_();
@@ -106,7 +132,7 @@ function agListCampaigns_(userId,generation){
     c.audit.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   });
   campaigns.sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
-  return{ok:true,campaigns:campaigns,database:'Google Sheets'};
+  return{ok:true,campaigns:campaigns,deletedIds:agDeletedIds_(),database:'Google Sheets'};
 }
 function agDeleteRowsByCampaign_(sh,campaignId,campaignCol){
   if(sh.getLastRow()<2)return;
@@ -118,8 +144,10 @@ function agSaveCampaign_(campaign,userId,generation){
   campaign=campaign||{};
   if(!campaign.id)return{ok:false,error:'ID questionnaire manquant.'};
   agEnsureDb_();
+  if(agIsDeleted_(campaign.id))return{ok:false,error:'Ce questionnaire a été supprimé définitivement.',deleted:true,campaignId:String(campaign.id)};
   const lock=LockService.getScriptLock();lock.waitLock(20000);
   try{
+    agMarkDeleted_(campaignId,auth.user&&auth.user.id||userId);
     const csh=agSheet_(AG_CAMPAIGNS_SHEET,AG_CAMPAIGN_HEADERS);
     const rsh=agSheet_(AG_RESPONSES_SHEET,AG_RESPONSE_HEADERS);
     const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);
@@ -179,7 +207,7 @@ function agDatabaseInfo_(userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   agEnsureDb_();
   const ss=agDb_();
-  return{ok:true,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),sheets:[AG_CAMPAIGNS_SHEET,AG_RESPONSES_SHEET,AG_AUDIT_SHEET]};
+  return{ok:true,spreadsheetId:ss.getId(),spreadsheetName:ss.getName(),sheets:[AG_CAMPAIGNS_SHEET,AG_RESPONSES_SHEET,AG_AUDIT_SHEET,AG_DELETIONS_SHEET]};
 }
 function initialiserBaseConsultationAG(){
   agEnsureDb_();
