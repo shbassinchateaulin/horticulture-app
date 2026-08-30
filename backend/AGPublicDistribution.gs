@@ -104,16 +104,19 @@ function agPublicCampaign_(token,previewId){
   const sharedId=agPublicShareCampaignId_(token);if(sharedId){const c=agCampaignServer_(sharedId);if(!c||c.status!=='open')return{ok:false,error:'Cette consultation est clôturée ou indisponible.'};return{ok:true,shared:true,alreadyResponded:false,member:{firstName:'',lastName:''},campaign:{id:c.id,title:c.title,year:c.year,status:c.status,settings:c.settings,sections:c.sections}}}
   const d=agFindDistributionByToken_(token);if(!d)return{ok:false,error:'Lien invalide ou expiré.'};const r=d.data,c=agCampaignServer_(String(r[1]||''));if(!c||c.status!=='open')return{ok:false,error:'Cette consultation est clôturée ou indisponible.'};return{ok:true,alreadyResponded:!!r[9],member:{firstName:String(r[3]||''),lastName:String(r[4]||'')},campaign:{id:c.id,title:c.title,year:c.year,status:c.status,settings:c.settings,sections:c.sections}};
 }
-function agSubmitPublicResponse_(token,answers){
+function agSubmitPublicResponse_(token,answers,respondentFirstName,respondentLastName){
   const sharedId=agPublicShareCampaignId_(token);let d=null,r=null,c=null,shared=false;
   if(sharedId){shared=true;c=agCampaignServer_(sharedId)}else{d=agFindDistributionByToken_(token);if(!d)return{ok:false,error:'Lien invalide ou expiré.'};r=d.data;if(r[9])return{ok:false,error:'Une réponse a déjà été enregistrée avec ce lien.',alreadyResponded:true};c=agCampaignServer_(String(r[1]||''))}
   if(!c||c.status!=='open')return{ok:false,error:'Cette consultation n’est plus ouverte.'};answers=answers||{};const qs=(c.sections||[]).flatMap(s=>s.questions||[]);
   const missing=qs.filter(q=>q.required&&(Array.isArray(answers[q.id])?answers[q.id].length===0:String(answers[q.id]??'').trim()===''));if(missing.length)return{ok:false,error:'Certaines questions obligatoires ne sont pas renseignées.'};
-  const identity=((c.settings||{}).identityMode||((c.settings||{}).anonymous?'anonymous':'optional')),first=shared||identity==='anonymous'?'':String(r[3]||''),last=shared||identity==='anonymous'?'':String(r[4]||'');
+  let first=String(respondentFirstName||answers.__respondentFirstName||'').trim(),last=String(respondentLastName||answers.__respondentLastName||'').trim();
+  if(!first&&!shared&&r)first=String(r[3]||'').trim();if(!last&&!shared&&r)last=String(r[4]||'').trim();
+  if(!first||!last)return{ok:false,error:'Le nom et le prénom sont obligatoires pour envoyer le questionnaire.'};
+  delete answers.__respondentFirstName;delete answers.__respondentLastName;
   const filled=qs.filter(q=>Array.isArray(answers[q.id])?answers[q.id].length:String(answers[q.id]??'').trim()).length,at=new Date().toISOString(),responseId=Utilities.getUuid(),completion=qs.length?Math.round(filled*100/qs.length):0;
   agPublicResponsesSheet_().appendRow([responseId,c.id,first,last,[first,last].filter(Boolean).join(' '),shared?'public':'email',at,at,JSON.stringify(answers),completion]);
   if(!shared)d.sheet.getRange(d.row,10).setValue(at);
-  agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS).appendRow([Utilities.getUuid(),c.id,at,'Réponse numérique reçue',shared?'Lien public / QR code':'Questionnaire en ligne']);
+  agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS).appendRow([Utilities.getUuid(),c.id,at,'Réponse numérique reçue',[first,last].filter(Boolean).join(' ')+' — '+(shared?'Lien public / QR code':'Questionnaire en ligne')]);
   SpreadsheetApp.flush();return{ok:true,message:'Merci, votre réponse a bien été enregistrée.'};
 }
 
@@ -127,7 +130,7 @@ doGet=function(e){
 };
 const agBaseDoPost_=doPost;
 doPost=function(e){
-  try{const b=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');if(b.action==='prepareAGDistribution')return json_(agPrepareDistribution_(b.campaignId||'',b.userId||'',b.generation||''));if(b.action==='sendAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',false));if(b.action==='remindAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',true));if(b.action==='getAGPublicShare')return json_(agGetPublicShare_(b.campaignId||'',b.userId||'',b.generation||''));if(b.action==='submitAGPublicResponse')return json_(agSubmitPublicResponse_(b.t||'',b.answers||{}))}catch(err){return json_({ok:false,error:String(err)})}
+  try{const b=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');if(b.action==='prepareAGDistribution')return json_(agPrepareDistribution_(b.campaignId||'',b.userId||'',b.generation||''));if(b.action==='sendAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',false));if(b.action==='remindAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',true));if(b.action==='getAGPublicShare')return json_(agGetPublicShare_(b.campaignId||'',b.userId||'',b.generation||''));if(b.action==='submitAGPublicResponse')return json_(agSubmitPublicResponse_(b.t||'',b.answers||{},b.respondentFirstName||'',b.respondentLastName||''))}catch(err){return json_({ok:false,error:String(err)})}
   return agBaseDoPost_(e);
 };
 
