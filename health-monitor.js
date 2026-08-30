@@ -1,5 +1,6 @@
 (()=>{
   const q=new URLSearchParams(location.search);
+  if(q.get('health')==='0'){localStorage.removeItem('horticulture-health-mode');return}
   const enabled=q.get('health')==='1'||localStorage.getItem('horticulture-health-mode')==='1';
   if(!enabled)return;
   localStorage.setItem('horticulture-health-mode','1');
