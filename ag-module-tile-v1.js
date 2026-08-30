@@ -13,5 +13,5 @@ function add(){
   list.insertBefore(b,access||null);
  }
 }
-add();new MutationObserver(add).observe(document.documentElement,{childList:true,subtree:true});
+add();setTimeout(add,400);window.addEventListener('pageshow',add);window.addEventListener('horticulture-users-synced',add);
 })();
