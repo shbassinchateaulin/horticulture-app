@@ -10,33 +10,98 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch index
+      - name: Patch AG module
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('index.html')
+          p=Path('ag-consultation-v1.js')
           s=p.read_text()
-          if 'superadmin-v2.css' not in s:
-              s=s.replace('</head>', '<link rel="stylesheet" href="superadmin-v2.css?v=2"></head>')
-          if 'superadmin-v2.js' not in s:
-              s=s.replace('</body>', '<script src="superadmin-v2.js?v=2"></script></body>')
+          old="""  async function persist(){
+    syncHeader();
+    draft.title=draft.title.trim()||'Questionnaire Assemblée générale';
+    draft.sections.forEach(s=>{s.title=(s.title||'Section').trim()||'Section';s.questions=(s.questions||[]).filter(q=>(q.label||'').trim())});
+    if(!allQuestions(draft).length)return alert('Ajoute au moins une question.');
+    audit(draft,'Enregistrement du questionnaire',allQuestions(draft).length+' question(s)');
+    const id=draft.id;
+    try{
+      await saveCampaignConfirmed_(draft);
+      activeId=id;clearDraft();draft=null;campaign(activeId,'overview');
+    }catch(e){
+      console.error(e);
+      alert(\"Google Sheets : \"+(e?.message||\"enregistrement impossible.\"));
+    }
+  }
+"""
+          new="""  let persistBusy=false;
+  function persist(){
+    if(persistBusy)return;
+    syncHeader();
+    draft.title=draft.title.trim()||'Questionnaire Assemblée générale';
+    draft.sections.forEach(s=>{s.title=(s.title||'Section').trim()||'Section';s.questions=(s.questions||[]).filter(q=>(q.label||'').trim())});
+    if(!allQuestions(draft).length)return alert('Ajoute au moins une question.');
+    persistBusy=true;
+    $$('[data-save],[data-save-bottom]',root()).forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true')});
+    audit(draft,'Enregistrement du questionnaire',allQuestions(draft).length+' question(s)');
+    const saved=JSON.parse(JSON.stringify(draft));
+    const id=saved.id;
+    saveCampaign(saved,false);
+    activeId=id;
+    clearDraft();
+    draft=null;
+    campaign(activeId,'overview');
+    Promise.resolve().then(()=>agPushCampaign_(saved)).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e));
+  }
+"""
+          if old not in s:
+              raise SystemExit('persist block not found')
+          s=s.replace(old,new,1)
+          s=s.replace("        $('.view').forEach(v=>v.classList.remove('active'));", "        $$('.view').forEach(v=>v.classList.remove('active'));")
+          nav_old="""  document.addEventListener('click',e=>{
+    const go=e.target.closest?.('[data-go]');
+    if(!go||!document.body.classList.contains('agWorkspaceMode'))return;
+    document.body.classList.remove('agWorkspaceMode');
+    root().classList.remove('active');
+    clearRoute();
+    setAGActive_(false);
+  },true);
+"""
+          nav_new="""  document.addEventListener('click',e=>{
+    const go=e.target.closest?.('[data-go]');
+    const homeLogo=e.target.closest?.('.top b,.welcome img,.dhead img');
+    if((!go&&!homeLogo)||!document.body.classList.contains('agWorkspaceMode'))return;
+    document.body.classList.remove('agWorkspaceMode');
+    root().classList.remove('active');
+    clearRoute();
+    setAGActive_(false);
+    if(homeLogo){
+      $$('.view').forEach(v=>v.classList.remove('active'));
+      $('#home')?.classList.add('active');
+    }
+  },true);
+"""
+          if nav_old not in s:
+              raise SystemExit('navigation block not found')
+          s=s.replace(nav_old,nav_new,1)
+          s=s.replace("function openAGSafe_(){\n  document.getElementById('drawer')?.classList.remove('open');\n  setAGActive_(true);", "function openAGSafe_(){\n  document.getElementById('drawer')?.classList.remove('open');\n  document.body.classList.remove('agWorkspaceMode');\n  root().classList.remove('active');\n  setAGActive_(true);")
+          s=s.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};", "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:32};")
           p.write_text(s)
           PY
-      - name: Bump service worker cache
+      - name: Remove obsolete AG service worker injection
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('sw.js')
           s=p.read_text()
-          s=s.replace("horticulture-admin-v16","horticulture-admin-v17")
-          if "'./superadmin-v2.css'" not in s:
-              s=s.replace("'./app-icon-botanical-v4.png'", "'./app-icon-botanical-v4.png','./superadmin-v2.css','./superadmin-v2.js'")
+          marker='// Consultation AG : correctifs chargés à la volée pour éviter tout blocage UI.'
+          if marker in s:
+              s=s.split(marker,1)[0].rstrip()+'\n'
+          s=s.replace("const VERSION='v99-ag-instant-save';", "const VERSION='v100-ag-native-fix';")
           p.write_text(s)
           PY
       - name: Commit changes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html sw.js
-          git diff --cached --quiet || git commit -m 'Apply Super Admin access management v2'
+          git add ag-consultation-v1.js sw.js
+          git diff --cached --quiet || git commit -m 'Fix AG instant save and Super Admin navigation state'
           git push
