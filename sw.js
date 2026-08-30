@@ -1,4 +1,4 @@
-const VERSION='v110-ag-distribution-stable';
+const VERSION='v111-ag-transmission-a4';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -15,9 +15,7 @@ self.addEventListener('notificationclick',e=>{
   const data=e.notification.data||{},target=data.url||'./';
   e.waitUntil((async()=>{
     const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    for(const c of list){
-      if('focus' in c){await c.focus();try{c.postMessage({type:'horticulture-notification-click',data});}catch(_){}return;}
-    }
+    for(const c of list){if('focus' in c){await c.focus();try{c.postMessage({type:'horticulture-notification-click',data});}catch(_){}return;}}
     if(self.clients.openWindow)return self.clients.openWindow(target);
   })());
 });
@@ -59,7 +57,7 @@ self.addEventListener('fetch',e=>{
     source=source.replace("  setTimeout(()=>scheduleRouteRestore(),80);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))","  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))");
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
     source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};");
-    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=1';s.async=true;document.head.appendChild(s)})();`;
+    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=2';s.async=true;document.head.appendChild(s)})();`;
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
 });
