@@ -1,4 +1,4 @@
-const VERSION='v116-ag-route-transmission-restored';
+const VERSION='v117-ag-home-transmission-fix';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -41,8 +41,6 @@ self.addEventListener('fetch',e=>{
 
     let source=await r.text();
 
-    // Uniquement le correctif d'enregistrement immédiat. Aucune réécriture de campaign(),
-    // des onglets, de la route ou de la restauration au rafraîchissement.
     source=source.replace(/  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,`  let persistBusy=false;
   function persist(){
     if(persistBusy)return;
@@ -61,9 +59,31 @@ self.addEventListener('fetch',e=>{
   $('[data-back]'`);
 
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
-    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:37};");
 
-    source+=`\n;(()=>{if(!document.getElementById('agTransmissionSafe')){const s=document.createElement('script');s.id='agTransmissionSafe';s.src='./ag-transmission-safe.js?v=2';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
+    // Retour Accueil robuste : les autres modules posent parfois des display:none!important.
+    source=source.replace(`function backHome(){
+  clearRoute();
+  setAGActive_(false);
+  document.body.classList.remove('agWorkspaceMode');
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#home')?.classList.add('active');
+  window.scrollTo(0,0);
+}` , `function backHome(){
+  clearRoute();
+  setAGActive_(false);
+  document.body.classList.remove('agWorkspaceMode');
+  const shell=document.getElementById('appShell');if(shell)shell.style.setProperty('display','block','important');
+  const mainEl=document.querySelector('main.app');if(mainEl){mainEl.style.setProperty('display','block','important');mainEl.style.setProperty('visibility','visible','important');mainEl.style.setProperty('opacity','1','important')}
+  $$('.view').forEach(v=>{v.classList.remove('active');v.style.setProperty('display','none','important')});
+  const home=$('#home');if(home){home.classList.add('active');home.style.setProperty('display','block','important');home.style.setProperty('visibility','visible','important');home.style.setProperty('opacity','1','important')}
+  const ag=root();ag.classList.remove('active');ag.style.setProperty('display','none','important');
+  try{window.HorticultureAccessRoute?.home?.()}catch(_){}
+  window.scrollTo(0,0);
+}`);
+
+    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:38};");
+
+    source+=`\n;(()=>{if(!document.getElementById('agTransmissionSafe')){const s=document.createElement('script');s.id='agTransmissionSafe';s.src='./ag-transmission-safe.js?v=3';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
 
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
