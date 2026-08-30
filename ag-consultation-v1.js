@@ -152,20 +152,25 @@ async function agRefreshShared_(force=false){
     if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
 
     const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns.slice();
+    const serverDeleted=new Set((Array.isArray(j.deletedIds)?j.deletedIds:[]).map(String));
     const looseDraft=restoreDraft();
-    if(looseDraft?.id&&!local.some(x=>String(x?.id)===String(looseDraft.id)))local.unshift(looseDraft);
+    if(looseDraft?.id&&serverDeleted.has(String(looseDraft.id)))clearDraft();
+    else if(looseDraft?.id&&!local.some(x=>String(x?.id)===String(looseDraft.id)))local.unshift(looseDraft);
     const pendingDelete=new Set(agPendingDeletes_());
     const merged=new Map();
 
-    remote.forEach(r=>{if(r?.id&&!pendingDelete.has(String(r.id)))merged.set(String(r.id),r)});
+    remote.forEach(r=>{if(r?.id&&!pendingDelete.has(String(r.id))&&!serverDeleted.has(String(r.id)))merged.set(String(r.id),r)});
     local.forEach(l=>{
-      if(!l?.id||pendingDelete.has(String(l.id)))return;
+      if(!l?.id||pendingDelete.has(String(l.id))||serverDeleted.has(String(l.id)))return;
       const id=String(l.id),r=merged.get(id);
       if(!r||agTime_(l.updatedAt)>agTime_(r.updatedAt))merged.set(id,l);
     });
 
     const mergedList=[...merged.values()].sort((a,b)=>agTime_(b.updatedAt||b.createdAt)-agTime_(a.updatedAt||a.createdAt));
     saveDB({version:APP_VERSION,campaigns:mergedList});
+    if(serverDeleted.size){
+      agSetPendingDeletes_(agPendingDeletes_().filter(id=>!serverDeleted.has(String(id))));
+    }
 
     const remoteMap=new Map(remote.filter(x=>x?.id).map(x=>[String(x.id),x]));
     for(const item of mergedList){
@@ -1059,5 +1064,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:23};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:24};
 })();
