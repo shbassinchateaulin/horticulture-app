@@ -11,7 +11,7 @@ const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
 const AG_PENDING_DELETE='horticulture-ag-pending-delete-v1';
-let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0;
+let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agDraftPushTimer=null;
 
 function saveRoute(route){
   try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
@@ -127,7 +127,9 @@ async function agRefreshShared_(force=false){
     const j=await agFetchJson_(u.toString(),{cache:'no-store'});
     if(!j?.ok)throw Error(j?.error||'Erreur base Consultation AG');
 
-    const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns;
+    const remote=Array.isArray(j.campaigns)?j.campaigns:[],local=db().campaigns.slice();
+    const looseDraft=restoreDraft();
+    if(looseDraft?.id&&!local.some(x=>String(x?.id)===String(looseDraft.id)))local.unshift(looseDraft);
     const pendingDelete=new Set(agPendingDeletes_());
     const merged=new Map();
 
@@ -185,8 +187,21 @@ function moveToTrash(id){const c=getAnyCampaign(id);if(!c||c.status!=='closed')r
 function restoreFromTrash(id){const c=getAnyCampaign(id);if(!c)return false;delete c.trashedAt;audit(c,'Restauré depuis la corbeille');saveCampaign(c);return true}
 function identityMode(c){return c?.settings?.identityMode||((c?.settings?.anonymous===true)?'anonymous':'optional')}
 function audit(c,action,detail=''){c.audit=c.audit||[];c.audit.unshift({id:uid('log'),at:now(),action,detail});c.audit=c.audit.slice(0,80)}
-function saveDraft(){if(draft)localStorage.setItem(DRAFT,JSON.stringify(draft))}
-function clearDraft(){localStorage.removeItem(DRAFT)}
+function saveDraft(){
+  if(!draft)return;
+  draft.updatedAt=now();
+  localStorage.setItem(DRAFT,JSON.stringify(draft));
+  clearTimeout(agDraftPushTimer);
+  agDraftPushTimer=setTimeout(()=>{
+    const d=restoreDraft();
+    if(d?.id)agPushCampaign_(d);
+  },700);
+}
+function clearDraft(){
+  clearTimeout(agDraftPushTimer);
+  agDraftPushTimer=null;
+  localStorage.removeItem(DRAFT);
+}
 function restoreDraft(){try{return JSON.parse(localStorage.getItem(DRAFT)||'null')}catch{return null}}
 
 function main(){return $('main.app')||$('.app')}
@@ -903,5 +918,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:17};
 })();
