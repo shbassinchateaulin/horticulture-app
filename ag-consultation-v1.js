@@ -548,7 +548,11 @@ function home(fromShared=false){
         '<div class="agRowActions">'+
           (c.status!=='closed'?'<button class="agRowBtn" data-open>'+primary+'</button>':'')+
           (c.status!=='draft'?'<button class="agRowBtn" data-results>Résultats</button>':'')+
-          (c.status==='draft'?'<div class="agRowMenuWrap"><button class="agRowBtn more" data-draft-menu title="Plus d’options">•••</button><div class="agRowMenu" data-draft-pop hidden><button data-draft-settings>Paramètres</button><button class="danger" data-delete-draft>Supprimer le brouillon</button></div></div>':c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
+          '<div class="agRowMenuWrap"><button class="agRowBtn more" data-row-menu title="Plus d’options">•••</button><div class="agRowMenu" data-row-pop hidden>'+
+            '<button data-row-settings>Paramètres</button>'+
+            (c.status==='draft'?'<button class="danger" data-delete-draft>Supprimer le brouillon</button>':'')+
+            (c.status==='closed'?'<button class="danger" data-trash>Mettre à la corbeille</button>':'')+
+          '</div></div>'+
         '</div>'+
       '</article>';
     }).join(''):'<div class="agRowEmpty">Aucun questionnaire dans cette catégorie.</div>';
@@ -557,20 +561,19 @@ function home(fromShared=false){
       const id=row.dataset.id;
       $('[data-open]',row)?.addEventListener('click',()=>{const c=getAnyCampaign(id);c?.status==='draft'?continueDraft_(id):campaign(id,'overview')});
       $('[data-results]',row)?.addEventListener('click',()=>campaign(id,'results'));
-      $('[data-more]',row)?.addEventListener('click',()=>campaign(id,'settings'));
-      const menuBtn=$('[data-draft-menu]',row),menuPop=$('[data-draft-pop]',row);
+      const menuBtn=$('[data-row-menu]',row),menuPop=$('[data-row-pop]',row);
       menuBtn?.addEventListener('click',e=>{
         e.stopPropagation();
         const wasOpen=menuPop&&!menuPop.hidden;
-        $('[data-draft-pop]',listEl).forEach(x=>x.hidden=true);
+        $('[data-row-pop]',listEl).forEach(x=>x.hidden=true);
         if(menuPop)menuPop.hidden=wasOpen;
       });
       menuPop?.addEventListener('click',e=>e.stopPropagation());
-      $('[data-draft-settings]',row)?.addEventListener('click',()=>campaign(id,'settings'));
+      $('[data-row-settings]',row)?.addEventListener('click',()=>campaign(id,'settings'));
       $('[data-delete-draft]',row)?.addEventListener('click',()=>{if(confirm('Supprimer définitivement ce brouillon ?')){removeCampaign(id);home(true)}});
       $('[data-trash]',row)?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home(true)}});
     });
-    listEl.onclick=e=>{if(!e.target.closest?.('[data-draft-menu],[data-draft-pop]'))$('[data-draft-pop]',listEl).forEach(x=>x.hidden=true)};
+    listEl.onclick=e=>{if(!e.target.closest?.('[data-row-menu],[data-row-pop]'))$('[data-row-pop]',listEl).forEach(x=>x.hidden=true)};
   }
   renderRows();
 
@@ -1158,5 +1161,5 @@ window.addEventListener('horticulture-users-synced',()=>{
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();setAGActive_(false);document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:29};
+window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:30};
 })();
