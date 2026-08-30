@@ -1,7 +1,7 @@
 (()=>{
 const API='https://script.google.com/macros/s/AKfycbx3w-MandZA_YuSt8L17hgaS7Ws7dkdlpiKHuVTM3T4gD-28v053rVSja0UAdH4kyAvMA/exec';
 const statuses=['Toutes','Pas commencé','En cours','Bloqué','Terminé','Non retenu'];
-const natures=['Animation','Activité','Sortie jardin','Visité','Intervention','Conférence','Thème à étudier','Services proposés','Achat matériel','Végétaux','Vie de l’association','Autre'];
+const natures=['Animations / activités','Sorties / jardins à visiter','Interventions / conférences','Thèmes à étudier','Services proposés','Achats / matériel / végétaux','Vie de l’association','Autre'];
 let items=[],busy=false,selected='Toutes';
 function session(){try{return JSON.parse(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1')||'null')}catch{return null}}
 function user(){const s=session();if(!s)return null;try{const us=JSON.parse(localStorage.getItem('horticulture-admin-users-v2')||'[]');return us.find(x=>String(x.id)===String(s.id))||s}catch{return s}}
