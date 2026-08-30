@@ -11,6 +11,12 @@ function clearAGRoute_(){
  try{sessionStorage.removeItem(AG_ACTIVE)}catch(_){}
  try{localStorage.removeItem(AG_ROUTE)}catch(_){}
 }
+function readAGRoute_(){
+ try{return JSON.parse(localStorage.getItem(AG_ROUTE)||'null')}catch{return null}
+}
+function isAGActive_(){
+ try{return sessionStorage.getItem(AG_ACTIVE)==='1'}catch{return false}
+}
 function resetAGVisualState_(clearRoute=false){
  document.body.classList.remove('agWorkspaceMode');
  const ag=document.getElementById('agConsultation');
@@ -31,17 +37,40 @@ function forceAGVisible_(){
  return true;
 }
 
-// Un rafraîchissement doit repartir de l'Administration normale.
-resetAGVisualState_(true);
+// IMPORTANT : ne jamais effacer automatiquement AG_ROUTE / AG_ACTIVE au chargement.
+// Ces deux valeurs servent précisément à restaurer Consultation AG après F5.
+function restoreAGAfterRefresh_(tryNo=0){
+ const route=readAGRoute_();
+ if(!isAGActive_()||!route)return false;
+ const api=window.HorticultureAG;
+ if(!api){if(tryNo<30)setTimeout(()=>restoreAGAfterRefresh_(tryNo+1),80);return false}
+ try{
+   if(route.screen==='campaign'&&route.id&&typeof api.openCampaign==='function'){
+     // Transmission est un module complémentaire : au rafraîchissement on restaure
+     // d'abord la fiche native, puis le module Transmission reprend la main si besoin.
+     const nativeTab=['overview','collect','responses','results','settings'].includes(route.tab)?route.tab:'overview';
+     api.openCampaign(route.id,nativeTab);
+     forceAGVisible_();
+     if(route.tab==='transmission')setTimeout(()=>window.HorticultureAGTransmissionSafe?.open?.(route.id),180);
+     return true;
+   }
+   if(typeof api.open==='function'){
+     api.open();
+     forceAGVisible_();
+     return true;
+   }
+ }catch(err){console.error('Restauration Consultation AG',err)}
+ if(tryNo<30)setTimeout(()=>restoreAGAfterRefresh_(tryNo+1),80);
+ return false;
+}
 
 function runAG_(){
  document.getElementById('drawer')?.classList.remove('open');
+ // Une ouverture volontaire depuis Accueil démarre une nouvelle navigation AG.
  resetAGVisualState_(true);
  try{
    if(typeof window.HorticultureAG?.open==='function'){
      window.HorticultureAG.open();
-     // access-route-fix peut avoir laissé display:none!important sur la vue AG
-     // après un retour par le logo. On rétablit explicitement toute la vue.
      forceAGVisible_();
      setTimeout(forceAGVisible_,0);
      setTimeout(forceAGVisible_,60);
@@ -95,9 +124,6 @@ function openSavedOverview_(id){
  }
 }
 
-// Le clic Enregistrer laisse le module AG effectuer sa sauvegarde normalement.
-// Ensuite on ouvre directement la fiche du questionnaire, sans repasser par
-// la liste (où un brouillon déclenche volontairement « Continuer » -> concepteur).
 document.addEventListener('click',e=>{
  const save=e.target.closest?.('#agConsultation [data-save],#agConsultation [data-save-bottom]');
  if(!save||!document.querySelector('#agConsultation [data-sections]'))return;
@@ -111,7 +137,7 @@ document.addEventListener('click',e=>{
  [35,100,220,450,800].forEach(ms=>setTimeout(tryOpen,ms));
 },true);
 
-// Tout retour vers Accueil / logo nettoie complètement l'ancien état AG.
+// Retour volontaire vers Accueil : là seulement on oublie la route AG.
 document.addEventListener('click',e=>{
  const home=e.target.closest?.('[data-go="home"],.admBrand,.admBrand img,.top b,.welcome img,.dhead img');
  if(!home)return;
@@ -143,6 +169,7 @@ function add(){
  document.querySelectorAll('.dlist [data-module="consultation-ag"],.dlist [data-permission="consultation_ag"]').forEach(wire);
 }
 add();setTimeout(add,250);setTimeout(add,800);
-window.addEventListener('pageshow',()=>{pendingSaveOpen='';resetAGVisualState_(true);add()});
-window.addEventListener('horticulture-users-synced',add);
+window.addEventListener('pageshow',()=>{pendingSaveOpen='';add();setTimeout(()=>restoreAGAfterRefresh_(),80)});
+window.addEventListener('horticulture-users-synced',()=>{add();setTimeout(()=>restoreAGAfterRefresh_(),80)});
+setTimeout(()=>restoreAGAfterRefresh_(),120);
 })();
