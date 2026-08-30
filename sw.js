@@ -1,4 +1,4 @@
-const VERSION='v115-ag-native-navigation-restored';
+const VERSION='v116-ag-route-transmission-restored';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -61,9 +61,9 @@ self.addEventListener('fetch',e=>{
   $('[data-back]'`);
 
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
-    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:36};");
+    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:37};");
 
-    source+=`\n;(()=>{if(!document.getElementById('agTransmissionSafe')){const s=document.createElement('script');s.id='agTransmissionSafe';s.src='./ag-transmission-safe.js?v=1';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
+    source+=`\n;(()=>{if(!document.getElementById('agTransmissionSafe')){const s=document.createElement('script');s.id='agTransmissionSafe';s.src='./ag-transmission-safe.js?v=2';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
 
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
