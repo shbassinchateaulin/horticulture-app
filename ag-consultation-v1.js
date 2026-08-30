@@ -1059,5 +1059,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:22};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:23};
 })();
