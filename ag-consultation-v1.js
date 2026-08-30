@@ -566,14 +566,20 @@ function importResponsesCSV(c,file){
 function safeName(s){return norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'questionnaire-ag'}
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
 
-function hook(){
-  $$('[data-module="consultation-ag"],[data-permission="consultation_ag"]').forEach(b=>{
-    if(b.dataset.agProHook)return;
-    b.dataset.agProHook='1';
-    b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();home()},true);
-  });
+function installNavigation(){
+  if(document.documentElement.dataset.agProNavigation==='1')return;
+  document.documentElement.dataset.agProNavigation='1';
+  document.addEventListener('click',e=>{
+    const b=e.target.closest?.('[data-module="consultation-ag"],[data-permission="consultation_ag"]');
+    if(!b)return;
+    if(!b.matches('button,[role="button"]'))return;
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('drawer')?.classList.remove('open');
+    home();
+  },true);
 }
 
-style();root();hook();setTimeout(hook,500);window.addEventListener('pageshow',hook);window.addEventListener('horticulture-users-synced',hook);
+style();root();installNavigation();
 window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION};
 })();
