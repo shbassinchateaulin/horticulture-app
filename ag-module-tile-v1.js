@@ -2,8 +2,14 @@
 const PERM='consultation_ag';
 const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M8 12h3M8 16h3M14 8h2M14 12h2M14 16h2"/><path d="m8 8 .8.8L10.5 7"/></svg>`;
 let lastOpen=0;
+function resetAGVisualState_(){
+ document.body.classList.remove('agWorkspaceMode');
+ document.getElementById('agConsultation')?.classList.remove('active');
+ try{sessionStorage.removeItem('horticulture-ag-active-v1')}catch(_){}
+}
 function runAG_(){
  document.getElementById('drawer')?.classList.remove('open');
+ resetAGVisualState_();
  try{
    if(typeof window.HorticultureAG?.open==='function'){window.HorticultureAG.open();return true}
  }catch(err){console.error('Ouverture Consultation AG',err)}
@@ -32,6 +38,12 @@ function wire(b){
  b.style.touchAction='manipulation';
  b.onclick=openAG;
 }
+// Nettoyage systématique quand on revient vers l'accueil via la navigation ou le logo.
+document.addEventListener('click',e=>{
+ const home=e.target.closest?.('[data-go="home"],.top b,.welcome img,.dhead img');
+ if(!home)return;
+ if(document.body.classList.contains('agWorkspaceMode')||document.getElementById('agConsultation')?.classList.contains('active'))resetAGVisualState_();
+},true);
 // Capture au niveau window : avant les autres gestionnaires globaux de l'application.
 // C'est volontairement limité au bouton Consultation AG.
 window.addEventListener('touchend',captureAG_,{capture:true,passive:false});
