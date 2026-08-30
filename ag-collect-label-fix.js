@@ -1,12 +1,22 @@
 (()=>{
 'use strict';
-function apply(){
-  const root=document.querySelector('#agConsultation');
-  if(!root)return;
-  const tab=root.querySelector('[data-tab="collect"]');
-  if(tab)tab.textContent='Ajouter un dépouillement papier';
+const LABEL='Ajouter un dépouillement papier';
+let observed=null;
+let observer=null;
+function bind(){
+  const tab=document.querySelector('#agConsultation [data-tab="collect"]');
+  if(!tab)return;
+  if(tab.textContent!==LABEL)tab.textContent=LABEL;
+  if(tab===observed)return;
+  if(observer)observer.disconnect();
+  observed=tab;
+  observer=new MutationObserver(()=>{
+    if(tab.textContent!==LABEL)tab.textContent=LABEL;
+  });
+  observer.observe(tab,{childList:true,characterData:true,subtree:true});
 }
-setInterval(apply,700);
-document.addEventListener('click',e=>{if(e.target.closest?.('#agConsultation'))setTimeout(apply,50)},true);
-setTimeout(apply,250);
+const rootObserver=new MutationObserver(bind);
+rootObserver.observe(document.documentElement,{childList:true,subtree:true});
+document.addEventListener('click',()=>queueMicrotask(bind),true);
+bind();
 })();
