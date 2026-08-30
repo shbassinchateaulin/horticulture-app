@@ -6,7 +6,7 @@ const APP_VERSION=2;
 const ROUTE_KEY='horticulture-ag-route-v3';
 let activeId='',draft=null,screen='home';
 let routeRestored=false;
-const AG_API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbxtln_KS6nNRVL7ktyEvL-1knosddMwgVNpvLhvAqQ/exec';
+const AG_API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
 const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
