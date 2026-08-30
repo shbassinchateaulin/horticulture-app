@@ -29,11 +29,11 @@
     try{
       OneSignal.Notifications?.addEventListener?.('foregroundWillDisplay',event=>{
         const n=event?.notification||{};
-        window.dispatchEvent(new CustomEvent('horticulture-onesignal-push',{detail:{type:String(n.additionalData?.type||n.data?.type||''),data:n.additionalData||n.data||{},id:String(n.notificationId||n.id||'')}}));
+        window.dispatchEvent(new CustomEvent('horticulture-onesignal-push',{detail:{type:String(n.additionalData?.type||n.data?.type||''),title:String(n.title||''),message:String(n.body||''),data:n.additionalData||n.data||{},id:String(n.notificationId||n.id||'')}}));
       });
       OneSignal.Notifications?.addEventListener?.('click',event=>{
         const n=event?.notification||{};
-        window.dispatchEvent(new CustomEvent('horticulture-onesignal-click',{detail:{type:String(n.additionalData?.type||n.data?.type||''),data:n.additionalData||n.data||{},id:String(n.notificationId||n.id||'')}}));
+        window.dispatchEvent(new CustomEvent('horticulture-onesignal-click',{detail:{type:String(n.additionalData?.type||n.data?.type||''),title:String(n.title||''),message:String(n.body||''),data:n.additionalData||n.data||{},id:String(n.notificationId||n.id||'')}}));
       });
     }catch(e){console.warn('OneSignal badge bridge',e)}
 
