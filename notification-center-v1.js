@@ -10,5 +10,5 @@ function openTray(){open=true;renderTray()}
 document.addEventListener('click',e=>{const b=e.target.closest?.('[data-notification-bell],.admBell');if(!b)return;e.preventDefault();e.stopPropagation();if(open)closeTray();else openTray()},false);
 window.addEventListener('horticulture-light-badges-updated',()=>{if(open)renderTray()});
 setTimeout(()=>bell(),300);window.addEventListener('pageshow',()=>bell());
-window.HorticultureNotificationCenter={refresh:async()=>window.HorticultureLightBadges?.refresh?.(),getNotifications:()=>items(),getUnread:()=>items(),markSuggestionRead:id=>window.HorticultureLightBadges?.markSuggestionRead?.(id),open:openTray};
+window.HorticultureNotificationCenter={refresh:async()=>{window.HorticultureLightBadges?.render?.();return items()},getNotifications:()=>items(),getUnread:()=>items(),markSuggestionRead:id=>window.HorticultureLightBadges?.markSuggestionRead?.(id),open:openTray};
 })();
