@@ -4,8 +4,8 @@ style.id='dashboard-tune-style';
 style.textContent=`
 /* Dashboard-only refinements. Login screen untouched. */
 .appShell{min-height:100vh!important}
-.appShell:has(#home.active){display:flex!important;flex-direction:column!important;min-height:100vh!important}
-.appShell:has(#home.active) .app{flex:1!important;width:100%!important}
+.appShell:has(#home.active){display:block!important;min-height:100vh!important}
+.appShell:has(#home.active) .app{width:100%!important}
 #home .dashTile{min-height:158px!important;padding:18px 12px!important}
 #home .dashIcon{width:38px!important;height:38px!important;margin-bottom:10px!important}
 #home .dashTile b{font-size:15px!important}
@@ -14,9 +14,9 @@ style.textContent=`
 #home .dashWelcome:after{background:linear-gradient(90deg,rgba(255,255,255,1) 0%,rgba(255,255,255,.52) 34%,rgba(255,255,255,.08) 100%),url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=88') center right/cover no-repeat!important;opacity:.82!important}
 .admBell em{display:none!important}
 .admSearch kbd{display:none!important}
-.desktopFoot{margin-top:auto!important}
+.desktopFoot{position:static!important;inset:auto!important;transform:none!important;margin:24px 0 0!important;z-index:auto!important}
 @media(min-width:761px){
- .appShell:has(#home.active) .desktopFoot{margin-top:auto!important;border-radius:0!important;border-left:0!important;border-right:0!important;border-bottom:0!important;width:100%!important}
+ .appShell:has(#home.active) .desktopFoot{position:static!important;margin:24px 0 0!important;border-radius:0!important;border-left:0!important;border-right:0!important;border-bottom:0!important;width:100%!important}
 }
 @media(max-width:1120px){
  #home .dashGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
