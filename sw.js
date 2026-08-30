@@ -1,4 +1,4 @@
-const VERSION='v106-ag-member-distribution';
+const VERSION='v107-ag-reopen-fix';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
