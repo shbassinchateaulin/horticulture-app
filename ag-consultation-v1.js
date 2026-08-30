@@ -61,13 +61,15 @@ function root(){
   return s;
 }
 function showRoot(){
+  document.body.classList.add('agWorkspaceMode');
   $$('.view').forEach(v=>v.classList.remove('active'));
   root().classList.add('active');
   window.scrollTo(0,0);
 }
 function backHome(){
   clearRoute();
-  $('.view').forEach(v=>v.classList.remove('active'));
+  document.body.classList.remove('agWorkspaceMode');
+  $$('.view').forEach(v=>v.classList.remove('active'));
   $('#home')?.classList.add('active');
   window.scrollTo(0,0);
 }
@@ -101,28 +103,28 @@ function style(){
 }
 
 function visualStyle(){
-  if($('#agProVisualV4'))return;
-  const s=document.createElement('style');s.id='agProVisualV4';
+  if($('#agVisualExactV8'))return;
+  const s=document.createElement('style');s.id='agVisualExactV8';
   s.textContent=
-  '#agConsultation{--ag-green:#07583f;--ag-green-dark:#064b37;--ag-ink:#173126;--ag-muted:#718078;--ag-line:#e3ebe6;--ag-soft:#f7faf8;max-width:1220px;margin:0 auto;padding:6px 4px 56px}'+
-  '#agConsultation>.back{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;padding:8px 2px;color:#527066;font-size:12px;font-weight:800}'+
-  '.agTop{margin-bottom:22px;align-items:center}.agTop h1{font-size:clamp(26px,3vw,34px);letter-spacing:-.025em;font-weight:880;color:var(--ag-ink)}.agTop p{max-width:720px;font-size:13px;color:var(--ag-muted)}'+
-  '.agToolbar{gap:9px}.agBtn,.agPrimary,.agDanger{min-height:42px;border-radius:12px;padding:10px 14px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.agBtn{background:#fff;border:1px solid #dbe6df;box-shadow:0 1px 2px #063d2f08}.agBtn:hover{background:#f8fbf9;border-color:#bfd3c7}.agPrimary{background:linear-gradient(135deg,#0b6b4b,#064b37);box-shadow:0 8px 18px #07583f24}.agDanger{background:#fff8f8;border-color:#efd0d0}'+
-  '.agKpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}.agKpi{position:relative;overflow:hidden;border:1px solid var(--ag-line);border-radius:18px;padding:17px 18px;box-shadow:0 7px 24px #063d2f08}.agKpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#0b7b57}.agKpi b{font-size:28px;letter-spacing:-.03em}.agKpi span{font-size:11px;font-weight:700;color:#78877f}'+
-  '.agGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.agCard{position:relative;border:1px solid var(--ag-line);border-radius:20px;padding:19px 20px;box-shadow:0 8px 28px #063d2f0a;transition:transform .16s ease,box-shadow .16s ease}.agCard:hover{transform:translateY(-2px);box-shadow:0 13px 34px #063d2f10}.agCard h3{font-size:18px;margin:11px 0 7px;letter-spacing:-.01em}.agCard .agToolbar{margin-top:15px!important}'+
-  '.agStatus{padding:5px 9px;font-size:10px;letter-spacing:.01em}.agStatus.open{background:#e8f7ed;color:#0d6a3d}.agStatus.closed{background:#fff2e8;color:#9b4e1d}.agStatus.draft{background:#f0f3f1;color:#5f6a65}'+
-  '.agPanel{border:1px solid var(--ag-line);border-radius:20px;padding:20px 21px;box-shadow:0 8px 26px #063d2f08}.agPanel h2,.agPanel h3{letter-spacing:-.015em}.agTwo{gap:14px}'+
-  '.agField label{font-size:11px;color:#52675e}.agField input,.agField textarea,.agField select{min-height:43px;border-color:#d9e4dd;border-radius:11px;background:#fff;box-shadow:inset 0 1px 1px #063d2f05}.agField input:focus,.agField textarea:focus,.agField select:focus{outline:2px solid #bfe2cf;border-color:#78b696}'+
-  '.agSourceGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.agSource{min-height:150px;border:1px solid var(--ag-line);border-radius:20px;padding:21px;background:linear-gradient(180deg,#fff,#fbfdfc);box-shadow:0 7px 22px #063d2f07}.agSource strong{font-size:16px}.agSource small{font-size:12px}.agSource:hover{transform:translateY(-2px);border-color:#b9d1c2;box-shadow:0 12px 28px #063d2f0f}'+
-  '.agSection{border-color:var(--ag-line);border-radius:18px;background:#fff;box-shadow:0 5px 16px #063d2f06}.agSectionHead{background:#f4f8f5;padding:13px 14px}.agSectionHead input{font-size:14px;border-color:#d9e4dd}.agQuestion{padding:15px}.agQuestionTop{grid-template-columns:minmax(0,1fr) 170px auto}.agIconBtn{border-color:#dbe5df;background:#fff}.agRemove{background:#fff7f7}'+
-  '.agBanner{border-radius:22px;padding:22px 24px;background:linear-gradient(135deg,#064b37 0%,#0a6b4b 72%,#0b7953 100%);box-shadow:0 14px 34px #064b3724}.agBanner h2{font-size:24px;letter-spacing:-.02em}.agBanner p{font-size:12px}'+
-  '.agTabs{gap:8px;margin-bottom:16px;padding:3px}.agTab{border-radius:999px;padding:9px 14px;border-color:#dce6e0;font-size:11px}.agTab.active{box-shadow:0 5px 12px #07583f20}'+
-  '.agTable{font-size:12px}.agTable th{background:#f7faf8}.agTable th:first-child{border-radius:10px 0 0 10px}.agTable th:last-child{border-radius:0 10px 10px 0}.agTable td{padding:12px 10px}'+
-  '.agEmpty{background:#fbfdfc;border-color:#cfdcd4;border-radius:18px;padding:38px}.agNotice{border-radius:13px;padding:13px 14px}'+
-  '.agCollector{max-width:820px}.agPreview{border-radius:18px;padding:20px;background:#fff;box-shadow:0 7px 24px #063d2f08}.agPreviewQ{padding:15px 0}'+
-  '.agResult{padding:17px 0}.agQuote{border-radius:12px;padding:11px 12px;background:#fafcfb}.agKeyword{padding:6px 9px}'+
-  '@media(max-width:900px){#agConsultation{padding-left:2px;padding-right:2px}.agKpis{grid-template-columns:repeat(2,minmax(0,1fr))}.agGrid,.agSourceGrid{grid-template-columns:1fr}.agTop{align-items:flex-start}.agQuestionTop{grid-template-columns:1fr}.agQActions{justify-content:flex-end}}'+
-  '@media(max-width:620px){.agTop{display:block}.agTop .agToolbar{margin-top:13px}.agTop .agToolbar>*{flex:1}.agKpis{grid-template-columns:1fr 1fr}.agKpi{padding:14px}.agKpi b{font-size:24px}.agPanel{padding:16px}.agBanner{padding:18px}.agBanner .agToolbar>*{flex:1}.agTabs{margin-left:-2px;margin-right:-2px}.agCard{padding:17px}.agSource{min-height:130px}.agTwo{grid-template-columns:1fr}}';
+  'body.agWorkspaceMode{overflow:hidden;background:#f7f9f7}'+
+  'body.agWorkspaceMode .top,body.agWorkspaceMode .bottom{display:none!important}'+
+  'body.agWorkspaceMode .app{max-width:none!important;width:100%!important;margin:0!important;padding:0!important}'+
+  'body.agWorkspaceMode #agConsultation{position:fixed!important;inset:0!important;z-index:99999!important;display:block!important;max-width:none!important;margin:0!important;padding:0!important;background:#f8faf8!important;overflow:auto!important;color:#17251f}'+
+  '.agHomeShell{min-height:100vh;display:grid;grid-template-columns:290px minmax(0,1fr);background:#f8faf8}'+
+  '.agSide{position:sticky;top:0;height:100vh;background:#fff;border-right:1px solid #e4e9e6;display:flex;flex-direction:column;padding:26px 20px 20px}'+
+  '.agSideBrand{display:flex;align-items:center;gap:12px;padding:3px 7px 24px}.agSideBrand img{width:58px;height:58px;object-fit:contain}.agSideBrand b{display:block;font-size:14px;line-height:1.25}.agSideBrand small{display:block;color:#76827c;font-size:10px;line-height:1.35;margin-top:4px}'+
+  '.agSideNav{display:grid;gap:5px;margin-top:12px}.agSideNav button{height:50px;border:0;background:transparent;border-radius:11px;text-align:left;padding:0 13px;display:flex;align-items:center;gap:12px;color:#26352e;font-weight:600;font-size:13px}.agSideNav button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}.agSideNav button:hover{background:#f4f8f5}.agSideNav button.active{background:linear-gradient(135deg,#0a6d4a,#07583f);color:#fff;box-shadow:0 7px 18px #07583f22}'+
+  '.agSideBottom{margin-top:auto}.agUserCard{border:1px solid #dfe7e2;border-radius:13px;background:linear-gradient(135deg,#f7faf8,#eff5f1);padding:12px;display:flex;align-items:center;gap:10px}.agUserAvatar{width:39px;height:39px;border-radius:50%;background:#087047;color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}.agUserCard b{display:block;font-size:12px}.agUserCard small{display:block;color:#75837c;font-size:10px;margin-top:2px}.agLogout{margin-top:12px!important;color:#c43c36!important}.agLogout:hover{background:#fff5f5!important}'+
+  '.agMain{padding:34px 34px 24px;min-width:0}.agMainHead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:28px}.agMainHead h1{font-size:36px;line-height:1.05;margin:0 0 10px;letter-spacing:-.035em;color:#111d18}.agMainHead p{margin:0;color:#68766f;font-size:14px}.agMainActions{display:flex;gap:10px;align-items:center}.agTopAction{height:48px;border-radius:10px;border:1px solid #dbe2de;background:#fff;padding:0 16px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:9px;box-shadow:0 3px 10px #1731260b}.agTopAction.primary{background:linear-gradient(135deg,#087047,#07583f);color:#fff;border-color:#07583f;min-width:190px;justify-content:center}.agTrashCount{min-width:20px;height:20px;border-radius:99px;background:#c52323;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}'+
+  '.agStatGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:28px}.agStatCard{height:132px;background:#fff;border:1px solid #e2e8e4;border-radius:15px;box-shadow:0 8px 22px #17312609;display:flex;align-items:center;padding:18px 20px;gap:16px}.agStatIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.agStatIcon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.agStatIcon.green{background:#e5f3e8;color:#0b7a45}.agStatIcon.blue{background:#e4effd;color:#1769c2}.agStatIcon.orange{background:#fff0dc;color:#f08a13}.agStatIcon.purple{background:#eee6fb;color:#7146c7}.agStatText span{display:block;font-size:12px;color:#394940}.agStatText b{display:block;font-size:28px;line-height:1.05;margin:5px 0 4px;color:#111c17}.agStatText small{display:block;color:#6f7d76;font-size:11px}'+
+  '.agControls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}.agTabsHome{display:flex;background:#fff;border:1px solid #dfe6e2;border-radius:10px;overflow:hidden;box-shadow:0 3px 10px #17312607}.agTabsHome button{height:46px;min-width:106px;border:0;background:#fff;color:#24362d;font-size:12px;font-weight:600;position:relative}.agTabsHome button.active{color:#07583f}.agTabsHome button.active:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#0a704a}.agSearchArea{display:flex;gap:10px}.agSearchBox{width:250px;height:46px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;gap:10px;padding:0 13px}.agSearchBox svg{width:18px;height:18px;fill:none;stroke:#53675e;stroke-width:1.8}.agSearchBox input{border:0;outline:0;width:100%;font-size:12px;background:transparent}.agFilterBtn{height:46px;min-width:125px;border:1px solid #dfe6e2;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:600}.agFilterBtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}'+
+  '.agList{display:grid;gap:9px}.agListRow{min-height:94px;background:#fff;border:1px solid #e3e8e5;border-radius:12px;box-shadow:0 5px 16px #17312607;display:grid;grid-template-columns:minmax(330px,1.7fr) 150px 130px auto;align-items:center;gap:18px;padding:14px 16px}.agRowTitle{display:flex;align-items:center;gap:14px;min-width:0}.agDocIcon{width:45px;height:45px;border-radius:50%;background:#e6f3e9;color:#0a7145;display:grid;place-items:center;flex:0 0 auto}.agDocIcon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8}.agRowTitleText{min-width:0}.agRowTitleText b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agRowTitleText small{display:block;color:#697870;font-size:11px;margin-top:5px}.agStatusPill{justify-self:start;border-radius:99px;padding:6px 11px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px}.agStatusPill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.agStatusPill.open{background:#e6f5e9;color:#116c40}.agStatusPill.closed{background:#fff0df;color:#c66312}.agStatusPill.draft{background:#eceeed;color:#303a35}.agResponseCell{font-size:12px;color:#26372f;line-height:1.5}.agResponseCell b{display:block;font-size:12px}.agRowActions{display:flex;gap:8px;justify-content:flex-end}.agRowBtn{height:40px;border:1px solid #d7dfda;border-radius:9px;background:#fff;padding:0 14px;font-size:11px;font-weight:700;color:#27372f}.agRowBtn:hover{background:#f8faf8}.agRowBtn.trash{width:42px;padding:0;color:#bc2b27;border-color:#e3a9a6}.agRowBtn.more{width:42px;padding:0;font-size:18px}.agRowEmpty{background:#fff;border:1px dashed #ced8d2;border-radius:12px;padding:42px;text-align:center;color:#6d7b74}'+
+  '.agLocalFoot{text-align:center;color:#717f77;font-size:10px;padding:23px 0 3px}.agLocalFoot svg{width:13px;height:13px;vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.8}'+
+  '.agMobileBack{display:none}'+
+  '@media(max-width:1180px){.agHomeShell{grid-template-columns:230px minmax(0,1fr)}.agMain{padding:28px 22px}.agStatGrid{grid-template-columns:repeat(2,1fr)}.agListRow{grid-template-columns:minmax(270px,1fr) 120px 105px auto}.agSideBrand small{display:none}}'+
+  '@media(max-width:820px){body.agWorkspaceMode{overflow:auto}.agHomeShell{display:block}.agSide{display:none}.agMain{padding:18px 13px 24px}.agMainHead{display:block;margin-bottom:20px}.agMainHead h1{font-size:29px}.agMainActions{margin-top:15px}.agMainActions>*{flex:1}.agTopAction.primary{min-width:0}.agStatGrid{gap:9px;margin-bottom:18px}.agStatCard{height:105px;padding:13px;gap:10px}.agStatIcon{width:40px;height:40px}.agStatText b{font-size:23px}.agControls{display:block}.agTabsHome{overflow:auto;margin-bottom:10px}.agTabsHome button{min-width:94px}.agSearchArea{display:grid;grid-template-columns:1fr 105px}.agSearchBox{width:auto}.agFilterBtn{min-width:0}.agListRow{grid-template-columns:1fr;gap:10px;padding:14px}.agStatusPill{position:absolute;right:14px;top:14px}.agListRow{position:relative}.agRowTitle{padding-right:92px}.agResponseCell{padding-left:59px}.agRowActions{justify-content:flex-start;padding-left:59px}.agMobileBack{display:inline-flex;border:0;background:transparent;color:#07583f;font-weight:800;padding:0 0 10px}.agLocalFoot{padding-bottom:20px}}'+
+  'body.agWorkspaceMode #agConsultation:not(:has(.agHomeShell)){position:fixed!important;inset:0!important;max-width:none!important;padding:28px!important;background:#f8faf8!important;overflow:auto!important}'+
+  'body.agWorkspaceMode #agConsultation:not(:has(.agHomeShell))>.back{display:inline-flex;margin-bottom:14px}';
   document.head.appendChild(s);
 }
 
@@ -136,41 +138,150 @@ function avgCompletion(c){
   return Math.round(values.reduce((a,b)=>a+b,0)/values.length*100);
 }
 
+function agSvg(name){
+  const I={
+    home:'<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg>',
+    users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><circle cx="17" cy="9" r="3"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7M15 15c4 0 7 2 7 6"/></svg>',
+    cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15l2 2 4-4"/></svg>',
+    chat:'<svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>',
+    form:'<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+    doc:'<svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg>',
+    mail:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
+    gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 15a2 2 0 0 0 .4 2L17 19.4a2 2 0 0 0-2-.4 2 2 0 0 0-1 1.8h-4A2 2 0 0 0 9 19a2 2 0 0 0-2 .4L4.6 17A2 2 0 0 0 5 15a2 2 0 0 0-1.8-1v-4A2 2 0 0 0 5 9a2 2 0 0 0-.4-2L7 4.6A2 2 0 0 0 9 5a2 2 0 0 0 1-1.8h4A2 2 0 0 0 15 5a2 2 0 0 0 2-.4L19.4 7A2 2 0 0 0 19 9a2 2 0 0 0 1.8 1v4A2 2 0 0 0 19 15z"/></svg>',
+    logout:'<svg viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"/></svg>',
+    trash:'<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>',
+    plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    responses:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-4 2-7 6-7s6 3 6 7M12 20c0-3 1.5-5.5 4-6.5 3.5.5 6 3 6 6.5"/></svg>',
+    pie:'<svg viewBox="0 0 24 24"><path d="M12 3v9h9A9 9 0 1 1 12 3z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>',
+    search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    filter:'<svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>',
+    lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'
+  };
+  return I[name]||I.doc;
+}
+function agDateLabel(c){
+  const d=new Date(c.updatedAt||c.createdAt||Date.now());
+  const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const time=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  if(c.status==='closed')return 'Clôturé le '+date;
+  return 'Modifié le '+date+' à '+time;
+}
+function agRate(c){
+  const target=Number(c.settings?.targetCount||0);
+  if(target>0)return Math.min(100,Math.round(((c.responses||[]).length/target)*100));
+  return avgCompletion(c);
+}
+function agGoPermission(permission){
+  backHome();
+  setTimeout(()=>{
+    const tile=document.querySelector('#home [data-permission="'+permission+'"]');
+    if(tile)tile.click();
+  },0);
+}
+
 function home(){
   saveRoute({screen:'home'});
-  screen='home';showRoot();style();
-  const list=campaigns(),trash=trashCampaigns(),open=list.filter(c=>c.status==='open').length,resp=totalResponses(),last=list[0];
+  screen='home';showRoot();style();visualStyle();
+  const list=campaigns(),trash=trashCampaigns(),openCount=list.filter(c=>c.status==='open').length,resp=totalResponses();
+  const rate=list.length?Math.round(list.reduce((n,c)=>n+agRate(c),0)/list.length):0;
+  const displayName=(document.getElementById('dname')?.textContent||document.getElementById('admTopName')?.textContent||'Utilisateur').trim();
+  const displayRole=(document.getElementById('drole')?.textContent||document.getElementById('role')?.textContent||'Compte').trim();
+  const initials=displayName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'U';
+
   root().innerHTML=
-    '<button class="back" data-back>← Retour</button>'+
-    '<div class="agTop"><div><h1>Consultation AG</h1><p>Questionnaires, collecte, dépouillement et synthèse pour l’Assemblée générale.</p></div><div class="agToolbar"><button class="agBtn" data-trash-view>🗑 Corbeille'+(trash.length?' ('+trash.length+')':'')+'</button><button class="agBtn" data-backup>Exporter la sauvegarde</button><button class="agBtn" data-restore>Importer une sauvegarde</button><button class="agPrimary" data-new>＋ Nouveau questionnaire</button></div></div>'+
-    '<div class="agKpis">'+
-      '<div class="agKpi"><b>'+list.length+'</b><span>questionnaires</span></div>'+
-      '<div class="agKpi"><b>'+open+'</b><span>consultation(s) ouverte(s)</span></div>'+
-      '<div class="agKpi"><b>'+resp+'</b><span>réponses enregistrées</span></div>'+
-      '<div class="agKpi"><b>'+(last?new Date(last.updatedAt||last.createdAt).toLocaleDateString('fr-FR'):'—')+'</b><span>dernière activité</span></div>'+
-    '</div>'+
-    '<div class="agGrid">'+
-    (list.length?list.map(c=>
-      '<article class="agCard" data-id="'+esc(c.id)+'">'+
-      '<span class="agStatus '+statusClass(c.status)+'">'+statusLabel(c.status)+'</span>'+
-      '<h3>'+esc(c.title||'Questionnaire AG')+'</h3>'+
-      '<div class="agMeta">'+esc(c.year||'')+' • '+allQuestions(c).length+' question(s) • '+(c.responses||[]).length+' réponse(s)<br>Complétion moyenne : '+avgCompletion(c)+' %</div>'+
-      '<div class="agToolbar" style="margin-top:13px"><button class="agBtn" data-open>Ouvrir</button><button class="agBtn" data-results>Résultats</button>'+(c.status==='closed'?'<button class="agDanger" data-trash title="Mettre à la corbeille" aria-label="Mettre à la corbeille">🗑</button>':'')+'</div>'+
-      '</article>'
-    ).join(''):'<div class="agEmpty" style="grid-column:1/-1">Aucun questionnaire. Crée le premier à partir du document Word, d’une photo, d’un modèle ou manuellement.</div>')+
-    '</div><input data-restore-file type="file" accept=".json,application/json" hidden>';
-  $('[data-back]',root()).onclick=backHome;
+  '<div class="agHomeShell">'+
+    '<aside class="agSide">'+
+      '<div class="agSideBrand"><img src="logo-admin-transparent.png" alt=""><div><b>Société d’Horticulture</b><small>et d’Art Floral du Bassin de Châteaulin</small></div></div>'+
+      '<nav class="agSideNav">'+
+        '<button data-nav="home">'+agSvg('home')+'<span>Accueil</span></button>'+
+        '<button data-nav="adherents">'+agSvg('users')+'<span>Adhérents</span></button>'+
+        '<button data-nav="sorties">'+agSvg('cal')+'<span>Activités</span></button>'+
+        '<button data-nav="suggestions">'+agSvg('chat')+'<span>Suggestions</span></button>'+
+        '<button class="active">'+agSvg('form')+'<span>Consultation AG</span></button>'+
+        '<button data-coming>'+agSvg('doc')+'<span>Documents</span></button>'+
+        '<button data-coming>'+agSvg('mail')+'<span>Messagerie</span></button>'+
+        '<button data-coming>'+agSvg('gear')+'<span>Paramètres</span></button>'+
+      '</nav>'+
+      '<div class="agSideBottom">'+
+        '<div class="agUserCard"><div class="agUserAvatar">'+esc(initials)+'</div><div><b>'+esc(displayName)+'</b><small>'+esc(displayRole)+'</small></div></div>'+
+        '<div class="agSideNav"><button class="agLogout" data-logout>'+agSvg('logout')+'<span>Déconnexion</span></button></div>'+
+      '</div>'+
+    '</aside>'+
+    '<main class="agMain">'+
+      '<button class="agMobileBack" data-back-mobile>← Retour à l’accueil</button>'+
+      '<header class="agMainHead"><div><h1>Consultation AG</h1><p>Créez, diffusez et suivez vos questionnaires d’assemblée générale</p></div>'+
+        '<div class="agMainActions"><button class="agTopAction" data-trash-view>'+agSvg('trash')+'<span>Corbeille</span>'+(trash.length?'<span class="agTrashCount">'+trash.length+'</span>':'')+'</button><button class="agTopAction primary" data-new>'+agSvg('plus')+'<span>Nouveau questionnaire</span></button></div>'+
+      '</header>'+
+      '<section class="agStatGrid">'+
+        '<div class="agStatCard"><div class="agStatIcon green">'+agSvg('form')+'</div><div class="agStatText"><span>Questionnaires</span><b>'+list.length+'</b><small>Total</small></div></div>'+
+        '<div class="agStatCard"><div class="agStatIcon blue">'+agSvg('doc')+'</div><div class="agStatText"><span>Ouverts</span><b>'+openCount+'</b><small>En cours</small></div></div>'+
+        '<div class="agStatCard"><div class="agStatIcon orange">'+agSvg('responses')+'</div><div class="agStatText"><span>Réponses</span><b>'+resp+'</b><small>Total</small></div></div>'+
+        '<div class="agStatCard"><div class="agStatIcon purple">'+agSvg('pie')+'</div><div class="agStatText"><span>Taux de réponse</span><b>'+rate+'%</b><small>Moyenne</small></div></div>'+
+      '</section>'+
+      '<section class="agControls">'+
+        '<div class="agTabsHome"><button class="active" data-filter="all">Tous</button><button data-filter="draft">Brouillons</button><button data-filter="open">Ouverts</button><button data-filter="closed">Clôturés</button></div>'+
+        '<div class="agSearchArea"><label class="agSearchBox">'+agSvg('search')+'<input data-search placeholder="Rechercher..."></label><button class="agFilterBtn" data-sort>'+agSvg('filter')+'<span>Filtrer</span><span>⌄</span></button></div>'+
+      '</section>'+
+      '<section class="agList" data-list></section>'+
+      '<div class="agLocalFoot">'+agSvg('lock')+'Vos données sont stockées localement sur cet appareil</div>'+
+    '</main>'+
+  '</div>'+
+  '<input data-restore-file type="file" accept=".json,application/json" hidden>';
+
+  let currentFilter='all',query='',sortMode='updated';
+  const listEl=$('[data-list]',root());
+  function filtered(){
+    let rows=list.slice();
+    if(currentFilter!=='all')rows=rows.filter(c=>c.status===currentFilter);
+    if(query)rows=rows.filter(c=>(String(c.title||'')+' '+String(c.year||'')).toLowerCase().includes(query));
+    rows.sort((a,b)=>{
+      if(sortMode==='responses')return (b.responses||[]).length-(a.responses||[]).length;
+      if(sortMode==='title')return String(a.title||'').localeCompare(String(b.title||''),'fr');
+      return new Date(b.updatedAt||b.createdAt||0)-new Date(a.updatedAt||a.createdAt||0);
+    });
+    return rows;
+  }
+  function renderRows(){
+    const rows=filtered();
+    listEl.innerHTML=rows.length?rows.map(c=>{
+      const count=(c.responses||[]).length,r=agRate(c),qs=allQuestions(c).length;
+      const primary=c.status==='draft'?'Continuer':'Ouvrir';
+      return '<article class="agListRow" data-id="'+esc(c.id)+'">'+
+        '<div class="agRowTitle"><div class="agDocIcon">'+agSvg('doc')+'</div><div class="agRowTitleText"><b>'+esc(c.title||'Questionnaire AG')+'</b><small>'+esc(agDateLabel(c))+' &nbsp; • &nbsp; '+qs+' question'+(qs>1?'s':'')+'</small></div></div>'+
+        '<span class="agStatusPill '+statusClass(c.status)+'">'+statusLabel(c.status)+'</span>'+
+        '<div class="agResponseCell"><b>'+count+' réponse'+(count>1?'s':'')+'</b><span>'+r+'%</span></div>'+
+        '<div class="agRowActions">'+
+          (c.status!=='closed'?'<button class="agRowBtn" data-open>'+primary+'</button>':'')+
+          (c.status!=='draft'?'<button class="agRowBtn" data-results>Résultats</button>':'')+
+          (c.status==='closed'?'<button class="agRowBtn trash" data-trash title="Mettre à la corbeille">'+agSvg('trash')+'</button>':'<button class="agRowBtn more" data-more title="Paramètres">•••</button>')+
+        '</div>'+
+      '</article>';
+    }).join(''):'<div class="agRowEmpty">Aucun questionnaire dans cette catégorie.</div>';
+
+    $$('[data-id]',listEl).forEach(row=>{
+      const id=row.dataset.id;
+      $('[data-open]',row)?.addEventListener('click',()=>campaign(id,'overview'));
+      $('[data-results]',row)?.addEventListener('click',()=>campaign(id,'results'));
+      $('[data-more]',row)?.addEventListener('click',()=>campaign(id,'settings'));
+      $('[data-trash]',row)?.addEventListener('click',()=>{if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home()}});
+    });
+  }
+  renderRows();
+
+  $$('[data-filter]',root()).forEach(b=>b.onclick=()=>{currentFilter=b.dataset.filter;$$('[data-filter]',root()).forEach(x=>x.classList.toggle('active',x===b));renderRows()});
+  $('[data-search]',root()).oninput=e=>{query=e.target.value.trim().toLowerCase();renderRows()};
+  $('[data-sort]',root()).onclick=()=>{sortMode=sortMode==='updated'?'responses':sortMode==='responses'?'title':'updated';$('[data-sort] span:first-of-type',root()).textContent=sortMode==='updated'?'Filtrer':sortMode==='responses'?'Plus de réponses':'A → Z';renderRows()};
+
   $('[data-new]',root()).onclick=newWizard;
   $('[data-trash-view]',root()).onclick=trashView;
-  $('[data-backup]',root()).onclick=exportBackup;
-  $('[data-restore]',root()).onclick=()=>$('[data-restore-file]',root()).click();
+  $('[data-back-mobile]',root()).onclick=backHome;
+  $('[data-nav="home"]',root()).onclick=backHome;
+  $('[data-nav="adherents"]',root()).onclick=()=>agGoPermission('adherents');
+  $('[data-nav="sorties"]',root()).onclick=()=>agGoPermission('sorties');
+  $('[data-nav="suggestions"]',root()).onclick=()=>agGoPermission('suggestions');
+  $$('[data-coming]',root()).forEach(b=>b.onclick=()=>alert('Cette rubrique sera reliée à l’application dans une prochaine étape.'));
+  $('[data-logout]',root()).onclick=()=>document.getElementById('logout')?.click();
   $('[data-restore-file]',root()).onchange=importBackup;
-  $$('[data-id]',root()).forEach(card=>{
-    const id=card.dataset.id;
-    $('[data-open]',card).onclick=()=>campaign(id,'overview');
-    $('[data-results]',card).onclick=()=>campaign(id,'results');
-    $('[data-trash]',card)?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(confirm('Mettre ce questionnaire clôturé à la corbeille ?')){moveToTrash(id);home()}});
-  });
 }
 
 function trashView(){
