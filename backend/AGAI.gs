@@ -1,8 +1,8 @@
 // AGAI.gs — Gemini AI engines for Consultation AG
 // Script Properties required: GEMINI_API_KEY
-// Optional: GEMINI_MODEL (default: gemini-2.5-flash)
+// Optional: GEMINI_MODEL (default: gemini-3.6-flash)
 
-const AG_AI_DEFAULT_MODEL='gemini-2.5-flash';
+const AG_AI_DEFAULT_MODEL='gemini-3.6-flash';
 const AG_AI_MAX_FILE_BYTES=8*1024*1024;
 
 function agAiConfig_(){
