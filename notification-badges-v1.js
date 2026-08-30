@@ -21,20 +21,17 @@ async function refresh(force=false){const id=userId(),now=Date.now();if(!id||bus
 async function markServerRead(notificationId){const id=userId();if(!id||!notificationId)return false;try{const j=await fetchJson(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'markNotificationRead',notificationId:String(notificationId),userId:id})});return !!j?.ok}catch{return false}}
 async function markAllServerRead(){const id=userId();if(!id)return false;try{const j=await fetchJson(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'markAllNotificationsRead',userId:id})});return !!j?.ok}catch{return false}}
 function recalc(){state.suggestion=state.items.some(x=>x.type==='suggestion');state.other=state.items.some(x=>x.type!=='suggestion');save();render()}
-async function markItemRead(notificationId){const id=String(notificationId||'');const item=state.items.find(x=>String(x.id)===id);if(item?.id)await markServerRead(item.id);state.items=state.items.filter(x=>String(x.id)!==id);recalc();return true}
-async function markSuggestionRead(suggestionId=''){const key=String(suggestionId||'');const matches=state.items.filter(x=>x.type==='suggestion'&&(!key||String(x.data?.suggestionId||x.data?.row||'')===key));for(const n of matches)if(n.id)await markServerRead(n.id);state.items=state.items.filter(x=>!(x.type==='suggestion'&&(!key||String(x.data?.suggestionId||x.data?.row||'')===key)));state.suggestion=state.items.some(x=>x.type==='suggestion');if(!matches.length)state.suggestion=false;save();render();return true}
-async function clearAll(){await markAllServerRead();setState({suggestion:false,other:false,items:[]});return true}
+function markItemRead(notificationId){const id=String(notificationId||'');const item=state.items.find(x=>String(x.id)===id);state.items=state.items.filter(x=>String(x.id)!==id);recalc();if(item?.id&&!item.id.startsWith('local-'))markServerRead(item.id);return true}
+function markSuggestionRead(suggestionId=''){const key=String(suggestionId||'');const matches=state.items.filter(x=>x.type==='suggestion'&&(!key||String(x.data?.suggestionId||x.data?.row||'')===key));state.items=state.items.filter(x=>!(x.type==='suggestion'&&(!key||String(x.data?.suggestionId||x.data?.row||'')===key)));state.suggestion=state.items.some(x=>x.type==='suggestion');if(!matches.length)state.suggestion=false;save();render();for(const n of matches)if(n.id&&!n.id.startsWith('local-'))markServerRead(n.id);return true}
+function clearAll(){setState({suggestion:false,other:false,items:[]});markAllServerRead();return true}
 function pushType(e){const d=e?.detail||{},data=d.data||d.additionalData||{};return String(data.type||d.type||'').toLowerCase()}
 function onPush(e){const d=e?.detail||{},type=pushType(e)||'info';addItem({id:d.id||'',type,title:d.title||'Notification',message:d.message||d.body||'',createdAt:new Date().toISOString(),data:d.data||d.additionalData||{}})}
 function fallbackItems(){if(state.items.length)return state.items.slice();const out=[];if(state.suggestion)out.push(cleanItem({id:'local-suggestion',type:'suggestion',title:'Nouvelle suggestion reçue',message:'Une suggestion est en attente de lecture.',createdAt:new Date().toISOString()}));if(state.other)out.push(cleanItem({id:'local-notification',type:'info',title:'Notification non lue',message:'Une notification est en attente de lecture.',createdAt:new Date().toISOString()}));return out}
 load();render();
 window.addEventListener('horticulture-onesignal-push',onPush);
 window.addEventListener('horticulture-onesignal-click',e=>{const type=pushType(e);if(type==='suggestion')markSuggestionRead();else clearAll()});
-window.addEventListener('horticulture-onesignal-user-bound',()=>setTimeout(()=>refresh(true),250));
-window.addEventListener('focus',()=>refresh(false));
-window.addEventListener('pageshow',()=>{load();render();refresh(false)});
-window.addEventListener('horticulture-users-synced',()=>refresh(false));
+window.addEventListener('pageshow',()=>{load();render()});
 document.addEventListener('click',e=>{const card=e.target.closest?.('.sugCard[data-id]');if(card)markSuggestionRead(String(card.dataset.id||''))},true);
-setTimeout(()=>{load();render();refresh(true)},1200);
+setTimeout(()=>{load();render();refresh(true)},1800);
 window.HorticultureLightBadges={refresh:()=>refresh(true),render,getItems:fallbackItems,getState:()=>({...state,items:state.items.slice()}),markItemRead,markSuggestionRead,clearAll};
 })();
