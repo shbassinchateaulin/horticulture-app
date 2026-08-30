@@ -1,5 +1,5 @@
 (()=>{
-const API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbxtln_KS6nNRVL7ktyEvL-1knosddMwgVNpvLhvAqQ/exec';let alerts=[],busy=false,lastNotify='',trayOpen=false;
+const API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';let alerts=[],busy=false,lastNotify='',trayOpen=false;
 function session(){try{return JSON.parse(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1')||'null')}catch{return null}}
 function user(){const s=session();if(!s)return null;try{const users=JSON.parse(localStorage.getItem('horticulture-admin-users-v2')||'[]');return users.find(x=>String(x.id)===String(s.id))||users.find(x=>String(x.username||'').toLowerCase()===String(s.username||'').toLowerCase())||s}catch{return s}}
 function isSuper(){const u=user();if(!u)return false;return String(u.username||'').toLowerCase()==='superadmin'||String(u.role||'').toLowerCase().replace(/[^a-z]/g,'').includes('superadmin')||String(u.function||'').toLowerCase().replace(/[^a-z]/g,'').includes('superadmin')}
