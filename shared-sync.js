@@ -1,9 +1,10 @@
 (()=>{
 const USERS_KEY='horticulture-admin-users-v2';
 const API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
-const POLL_MS=12000;
-const TIMEOUT_MS=7000;
-let syncing=false,ready=false,queue=Promise.resolve(),pulling=false,localWritePending=0;
+const POLL_MS=120000;
+const MIN_PULL_GAP=30000;
+const TIMEOUT_MS=5000;
+let syncing=false,ready=false,queue=Promise.resolve(),pulling=false,localWritePending=0,lastPullAt=0;
 const nativeSet=Storage.prototype.setItem,nativeRemove=Storage.prototype.removeItem;
 
 async function fetchWithTimeout(url,options={}){
@@ -33,8 +34,9 @@ function emit(users,source='remote'){window.dispatchEvent(new CustomEvent('horti
 function writeLocal(users){syncing=true;nativeSet.call(localStorage,USERS_KEY,JSON.stringify(users));syncing=false;emit(users,'remote')}
 
 async function pull(force=false){
-  if(pulling||(!force&&localWritePending>0)||(!force&&document.hidden))return null;
-  pulling=true;
+  const now=Date.now();
+  if(pulling||(!force&&localWritePending>0)||(!force&&document.hidden)||(!force&&now-lastPullAt<MIN_PULL_GAP))return null;
+  pulling=true;lastPullAt=now;
   try{
     const users=await listRemote(),before=localStorage.getItem(USERS_KEY)||'[]',after=JSON.stringify(users);
     if(before!==after)writeLocal(users);
