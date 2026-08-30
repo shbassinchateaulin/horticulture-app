@@ -183,11 +183,15 @@ function visualStyle(){
 
 function statusLabel(v){return v==='open'?'Ouvert':v==='closed'?'Clôturé':'Brouillon'}
 function statusClass(v){return v==='open'?'open':v==='closed'?'closed':'draft'}
-function allQuestions(c){return (c.sections||[]).flatMap(s=>s.questions||[])}
-function totalResponses(){return campaigns().reduce((n,c)=>n+(c.responses||[]).length,0)}
+function allQuestions(c){
+  const sections=Array.isArray(c?.sections)?c.sections:[];
+  return sections.flatMap(s=>Array.isArray(s?.questions)?s.questions:[]);
+}
+function totalResponses(){return campaigns().reduce((n,c)=>n+(Array.isArray(c?.responses)?c.responses.length:0),0)}
 function avgCompletion(c){
-  const qs=allQuestions(c);if(!qs.length||!(c.responses||[]).length)return 0;
-  const values=c.responses.map(r=>qs.filter(q=>{const v=r.answers?.[q.id];return Array.isArray(v)?v.length>0:String(v??'').trim()!==''}).length/qs.length);
+  const qs=allQuestions(c),responses=Array.isArray(c?.responses)?c.responses:[];
+  if(!qs.length||!responses.length)return 0;
+  const values=responses.map(r=>qs.filter(q=>{const v=r?.answers?.[q.id];return Array.isArray(v)?v.length>0:String(v??'').trim()!==''}).length/qs.length);
   return Math.round(values.reduce((a,b)=>a+b,0)/values.length*100);
 }
 
@@ -220,8 +224,8 @@ function agDateLabel(c){
   return 'Modifié le '+date+' à '+time;
 }
 function agRate(c){
-  const target=Number(c.settings?.targetCount||0);
-  if(target>0)return Math.min(100,Math.round(((c.responses||[]).length/target)*100));
+  const target=Number(c?.settings?.targetCount||0),responses=Array.isArray(c?.responses)?c.responses:[];
+  if(target>0)return Math.min(100,Math.round((responses.length/target)*100));
   return avgCompletion(c);
 }
 function agGoPermission(permission){
@@ -234,7 +238,7 @@ function agGoPermission(permission){
 
 function home(fromShared=false){
   saveRoute({screen:'home'});
-  screen='home';showRoot();style();visualStyle();
+  screen='home';style();visualStyle();
   const list=campaigns(),trash=trashCampaigns(),openCount=list.filter(c=>c.status==='open').length,resp=totalResponses();
   const rate=list.length?Math.round(list.reduce((n,c)=>n+agRate(c),0)/list.length):0;
   const displayName=(document.getElementById('dname')?.textContent||document.getElementById('admTopName')?.textContent||'Utilisateur').trim();
@@ -264,6 +268,8 @@ function home(fromShared=false){
   '</div>'+
   '<input data-restore-file type="file" accept=".json,application/json" hidden>';
 
+  showRoot();
+
   let currentFilter='all',query='',sortMode='updated';
   const listEl=$('[data-list]',root());
   function filtered(){
@@ -276,7 +282,7 @@ function home(fromShared=false){
           c.title||'',
           c.year||'',
           statusLabel(c.status),
-          ...(c.sections||[]).flatMap(s=>[s.title||'',...(s.questions||[]).map(q=>q.label||'')])
+          ...(Array.isArray(c?.sections)?c.sections:[]).flatMap(s=>[s?.title||'',...(Array.isArray(s?.questions)?s.questions:[]).map(q=>q?.label||'')])
         ].join(' ');
         return norm(hay).includes(needle);
       });
@@ -796,17 +802,23 @@ function scheduleRouteRestore(tryNo=0){
 }
 
 function installNavigation(){
-  if(document.documentElement.dataset.agProNavigation==='1')return;
-  document.documentElement.dataset.agProNavigation='1';
+  if(document.documentElement.dataset.agProNavigation==='2')return;
+  document.documentElement.dataset.agProNavigation='2';
   document.addEventListener('click',e=>{
     const b=e.target.closest?.('[data-module="consultation-ag"],[data-permission="consultation_ag"]');
-    if(!b)return;
-    if(!b.matches('button,[role="button"]'))return;
+    if(!b||!b.matches('button,[role="button"]'))return;
     e.preventDefault();
-    e.stopPropagation();
     document.getElementById('drawer')?.classList.remove('open');
-    home();
-  },true);
+    setTimeout(()=>{
+      try{home()}
+      catch(err){
+        console.error('Ouverture Consultation AG',err);
+        document.body.classList.remove('agWorkspaceMode');
+        $('.view').forEach(v=>v.classList.remove('active'));
+        $('#home')?.classList.add('active');
+      }
+    },0);
+  });
 }
 
 style();visualStyle();root();installNavigation();
