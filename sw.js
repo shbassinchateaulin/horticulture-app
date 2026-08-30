@@ -1,4 +1,4 @@
-const VERSION='v107-ag-reopen-fix';
+const VERSION='v108-ag-share-qr';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -103,7 +103,7 @@ self.addEventListener('fetch',e=>{
     );
 
     // Charge le module de diffusion des consultations aux adhérents.
-    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=1';s.async=true;document.head.appendChild(s)})();`;
+    source+=`\n;(()=>{if(document.getElementById('agDistributionModule'))return;const s=document.createElement('script');s.id='agDistributionModule';s.src='./ag-distribution-v1.js?v=2';s.async=true;document.head.appendChild(s)})();`;
 
     return new Response(source,{
       status:r.status,statusText:r.statusText,
