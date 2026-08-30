@@ -15,3 +15,15 @@
   align-items: center !important;
   gap: 7px !important;
 }
+
+/* The legacy polishing script still rewrites this tab label periodically.
+   Hide that volatile text and render the final label through CSS so it cannot flicker. */
+#agConsultation [data-tab="collect"] {
+  font-size: 0 !important;
+}
+#agConsultation [data-tab="collect"]::after {
+  content: "Ajouter un dépouillement papier";
+  font-size: 13px !important;
+  line-height: 1.2;
+  white-space: nowrap;
+}
