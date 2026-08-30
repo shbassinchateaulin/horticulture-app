@@ -1,4 +1,4 @@
-const VERSION='v112-ag-response-source-print-fix';
+const VERSION='v113-ag-native-transmission-results';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -36,6 +36,7 @@ self.addEventListener('fetch',e=>{
     const r=await fetch(e.request,{cache:'no-store'});
     if(isAGTile)return new Response(await r.text(),{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
     let source=await r.text();
+
     source=source.replace(/  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,`  let persistBusy=false;
   function persist(){
     if(persistBusy)return;
@@ -52,12 +53,26 @@ self.addEventListener('fetch',e=>{
     setTimeout(()=>{agPushCampaign_(saved).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e))},0);
   }
   $('[data-back]'`);
+
     source=source.replace("setTimeout(()=>scheduleRouteRestore(),450);","clearRoute();setAGActive_(false);");
     source=source.replace("window.addEventListener('pageshow',()=>{setTimeout(()=>scheduleRouteRestore(),120);setTimeout(agWarmShared_,500)});","window.addEventListener('pageshow',()=>{clearRoute();setAGActive_(false);setTimeout(agWarmShared_,500)});");
     source=source.replace("  setTimeout(()=>scheduleRouteRestore(),80);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))","  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))");
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
-    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:33};");
-    source+=`\n;(()=>{if(document.getElementById('agDistributionStable'))return;const s=document.createElement('script');s.id='agDistributionStable';s.src='./ag-distribution-stable.js?v=3';s.async=true;document.head.appendChild(s)})();`;
+
+    // Transmission fait désormais partie du rendu natif de la fiche : aucun bouton injecté en boucle.
+    source=source.replace(
+      "    '<button class=\"agBtn\" data-print>Imprimer</button></div></div>'+",
+      "    '<button class=\"agBtn agTransmitPrimary\" data-ag-transmit-primary>Transmettre aux adhérents</button><button class=\"agBtn\" data-print>Imprimer</button></div></div>'+"
+    );
+    source=source.replace(
+      "      '<button class=\"agTab '+(tab==='settings'?'active':'')+'\" data-tab=\"settings\">Paramètres</button>'+",
+      "      '<button class=\"agTab '+(tab==='settings'?'active':'')+'\" data-tab=\"settings\">Paramètres</button><button class=\"agTab\" data-ag-dist>Transmission</button>'+"
+    );
+
+    source=source.replace("window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};","window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:34};");
+
+    source+=`\n;(()=>{if(!document.getElementById('agTransmissionNative')){const s=document.createElement('script');s.id='agTransmissionNative';s.src='./ag-transmission-native.js?v=1';s.async=true;document.head.appendChild(s)}if(!document.getElementById('agResultsPolish')){const p=document.createElement('script');p.id='agResultsPolish';p.src='./ag-results-polish.js?v=1';p.async=true;document.head.appendChild(p)}})();`;
+
     return new Response(source,{status:r.status,statusText:r.statusText,headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store, max-age=0'}});
   })());
 });
