@@ -3,7 +3,22 @@
 const STORE='horticulture-ag-pro-v2';
 const DRAFT='horticulture-ag-pro-draft-v2';
 const APP_VERSION=2;
+const ROUTE_KEY='horticulture-ag-route-v3';
 let activeId='',draft=null,screen='home';
+let routeRestored=false;
+
+function saveRoute(route){
+  try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
+}
+function readRoute(){
+  try{return JSON.parse(localStorage.getItem(ROUTE_KEY)||'null')}catch{return null}
+}
+function clearRoute(){
+  try{localStorage.removeItem(ROUTE_KEY)}catch(_){}
+}
+function hasSession(){
+  return !!(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1'));
+}
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -51,7 +66,8 @@ function showRoot(){
   window.scrollTo(0,0);
 }
 function backHome(){
-  $$('.view').forEach(v=>v.classList.remove('active'));
+  clearRoute();
+  $('.view').forEach(v=>v.classList.remove('active'));
   $('#home')?.classList.add('active');
   window.scrollTo(0,0);
 }
@@ -84,6 +100,32 @@ function style(){
   document.head.appendChild(s);
 }
 
+function visualStyle(){
+  if($('#agProVisualV4'))return;
+  const s=document.createElement('style');s.id='agProVisualV4';
+  s.textContent=
+  '#agConsultation{--ag-green:#07583f;--ag-green-dark:#064b37;--ag-ink:#173126;--ag-muted:#718078;--ag-line:#e3ebe6;--ag-soft:#f7faf8;max-width:1220px;margin:0 auto;padding:6px 4px 56px}'+
+  '#agConsultation>.back{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;padding:8px 2px;color:#527066;font-size:12px;font-weight:800}'+
+  '.agTop{margin-bottom:22px;align-items:center}.agTop h1{font-size:clamp(26px,3vw,34px);letter-spacing:-.025em;font-weight:880;color:var(--ag-ink)}.agTop p{max-width:720px;font-size:13px;color:var(--ag-muted)}'+
+  '.agToolbar{gap:9px}.agBtn,.agPrimary,.agDanger{min-height:42px;border-radius:12px;padding:10px 14px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.agBtn{background:#fff;border:1px solid #dbe6df;box-shadow:0 1px 2px #063d2f08}.agBtn:hover{background:#f8fbf9;border-color:#bfd3c7}.agPrimary{background:linear-gradient(135deg,#0b6b4b,#064b37);box-shadow:0 8px 18px #07583f24}.agDanger{background:#fff8f8;border-color:#efd0d0}'+
+  '.agKpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}.agKpi{position:relative;overflow:hidden;border:1px solid var(--ag-line);border-radius:18px;padding:17px 18px;box-shadow:0 7px 24px #063d2f08}.agKpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#0b7b57}.agKpi b{font-size:28px;letter-spacing:-.03em}.agKpi span{font-size:11px;font-weight:700;color:#78877f}'+
+  '.agGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.agCard{position:relative;border:1px solid var(--ag-line);border-radius:20px;padding:19px 20px;box-shadow:0 8px 28px #063d2f0a;transition:transform .16s ease,box-shadow .16s ease}.agCard:hover{transform:translateY(-2px);box-shadow:0 13px 34px #063d2f10}.agCard h3{font-size:18px;margin:11px 0 7px;letter-spacing:-.01em}.agCard .agToolbar{margin-top:15px!important}'+
+  '.agStatus{padding:5px 9px;font-size:10px;letter-spacing:.01em}.agStatus.open{background:#e8f7ed;color:#0d6a3d}.agStatus.closed{background:#fff2e8;color:#9b4e1d}.agStatus.draft{background:#f0f3f1;color:#5f6a65}'+
+  '.agPanel{border:1px solid var(--ag-line);border-radius:20px;padding:20px 21px;box-shadow:0 8px 26px #063d2f08}.agPanel h2,.agPanel h3{letter-spacing:-.015em}.agTwo{gap:14px}'+
+  '.agField label{font-size:11px;color:#52675e}.agField input,.agField textarea,.agField select{min-height:43px;border-color:#d9e4dd;border-radius:11px;background:#fff;box-shadow:inset 0 1px 1px #063d2f05}.agField input:focus,.agField textarea:focus,.agField select:focus{outline:2px solid #bfe2cf;border-color:#78b696}'+
+  '.agSourceGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.agSource{min-height:150px;border:1px solid var(--ag-line);border-radius:20px;padding:21px;background:linear-gradient(180deg,#fff,#fbfdfc);box-shadow:0 7px 22px #063d2f07}.agSource strong{font-size:16px}.agSource small{font-size:12px}.agSource:hover{transform:translateY(-2px);border-color:#b9d1c2;box-shadow:0 12px 28px #063d2f0f}'+
+  '.agSection{border-color:var(--ag-line);border-radius:18px;background:#fff;box-shadow:0 5px 16px #063d2f06}.agSectionHead{background:#f4f8f5;padding:13px 14px}.agSectionHead input{font-size:14px;border-color:#d9e4dd}.agQuestion{padding:15px}.agQuestionTop{grid-template-columns:minmax(0,1fr) 170px auto}.agIconBtn{border-color:#dbe5df;background:#fff}.agRemove{background:#fff7f7}'+
+  '.agBanner{border-radius:22px;padding:22px 24px;background:linear-gradient(135deg,#064b37 0%,#0a6b4b 72%,#0b7953 100%);box-shadow:0 14px 34px #064b3724}.agBanner h2{font-size:24px;letter-spacing:-.02em}.agBanner p{font-size:12px}'+
+  '.agTabs{gap:8px;margin-bottom:16px;padding:3px}.agTab{border-radius:999px;padding:9px 14px;border-color:#dce6e0;font-size:11px}.agTab.active{box-shadow:0 5px 12px #07583f20}'+
+  '.agTable{font-size:12px}.agTable th{background:#f7faf8}.agTable th:first-child{border-radius:10px 0 0 10px}.agTable th:last-child{border-radius:0 10px 10px 0}.agTable td{padding:12px 10px}'+
+  '.agEmpty{background:#fbfdfc;border-color:#cfdcd4;border-radius:18px;padding:38px}.agNotice{border-radius:13px;padding:13px 14px}'+
+  '.agCollector{max-width:820px}.agPreview{border-radius:18px;padding:20px;background:#fff;box-shadow:0 7px 24px #063d2f08}.agPreviewQ{padding:15px 0}'+
+  '.agResult{padding:17px 0}.agQuote{border-radius:12px;padding:11px 12px;background:#fafcfb}.agKeyword{padding:6px 9px}'+
+  '@media(max-width:900px){#agConsultation{padding-left:2px;padding-right:2px}.agKpis{grid-template-columns:repeat(2,minmax(0,1fr))}.agGrid,.agSourceGrid{grid-template-columns:1fr}.agTop{align-items:flex-start}.agQuestionTop{grid-template-columns:1fr}.agQActions{justify-content:flex-end}}'+
+  '@media(max-width:620px){.agTop{display:block}.agTop .agToolbar{margin-top:13px}.agTop .agToolbar>*{flex:1}.agKpis{grid-template-columns:1fr 1fr}.agKpi{padding:14px}.agKpi b{font-size:24px}.agPanel{padding:16px}.agBanner{padding:18px}.agBanner .agToolbar>*{flex:1}.agTabs{margin-left:-2px;margin-right:-2px}.agCard{padding:17px}.agSource{min-height:130px}.agTwo{grid-template-columns:1fr}}';
+  document.head.appendChild(s);
+}
+
 function statusLabel(v){return v==='open'?'Ouvert':v==='closed'?'Clôturé':'Brouillon'}
 function statusClass(v){return v==='open'?'open':v==='closed'?'closed':'draft'}
 function allQuestions(c){return (c.sections||[]).flatMap(s=>s.questions||[])}
@@ -95,6 +137,7 @@ function avgCompletion(c){
 }
 
 function home(){
+  saveRoute({screen:'home'});
   screen='home';showRoot();style();
   const list=campaigns(),trash=trashCampaigns(),open=list.filter(c=>c.status==='open').length,resp=totalResponses(),last=list[0];
   root().innerHTML=
@@ -131,6 +174,7 @@ function home(){
 }
 
 function trashView(){
+  saveRoute({screen:'trash'});
   screen='trash';showRoot();style();
   const list=trashCampaigns();
   root().innerHTML=
@@ -155,6 +199,7 @@ function trashView(){
 }
 
 function newWizard(){
+  saveRoute({screen:'new'});
   screen='new';showRoot();
   const old=restoreDraft();
   root().innerHTML=
@@ -224,6 +269,7 @@ function parseTextQuestions(text){
 }
 
 function wordImport(){
+  saveRoute({screen:'word'});
   showRoot();
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
@@ -248,6 +294,7 @@ function wordImport(){
 }
 
 function photoImport(){
+  saveRoute({screen:'photo'});
   showRoot();
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
@@ -277,6 +324,7 @@ function photoImport(){
 }
 
 function builder(){
+  saveRoute({screen:'builder'});
   screen='builder';showRoot();style();
   if(!draft)draft=restoreDraft()||blankCampaign();
   if(!draft.sections?.length)draft.sections=[{id:uid('sec'),title:'Questionnaire',description:'',questions:[]}];
@@ -357,6 +405,7 @@ function builder(){
 }
 
 function previewDraft(){
+  saveRoute({screen:'builder'});
   syncDraftFromStorage();
   showRoot();
   const c=draft||restoreDraft();if(!c)return builder();
@@ -384,6 +433,7 @@ function answerControl(qu,interactive,val){
 }
 
 function campaign(id,tab='overview'){
+  saveRoute({screen:'campaign',id,tab});
   activeId=id;screen='campaign';showRoot();style();
   const c=getCampaign(id);if(!c)return home();
   root().innerHTML=
@@ -431,6 +481,7 @@ function collect(c){
 }
 
 function entry(id,existing=null){
+  saveRoute({screen:'entry',id,responseId:existing?.id||null});
   const c=getCampaign(id);if(!c)return;
   showRoot();screen='entry';
   const number=(c.responses||[]).length+1,answers=existing?.answers||{};
@@ -566,6 +617,31 @@ function importResponsesCSV(c,file){
 function safeName(s){return norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'questionnaire-ag'}
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
 
+function restoreRoute(){
+  if(routeRestored||!hasSession())return false;
+  const route=readRoute();if(!route)return false;
+  routeRestored=true;
+  try{
+    if(route.screen==='campaign'&&route.id&&getCampaign(route.id)){campaign(route.id,route.tab||'overview');return true}
+    if(route.screen==='entry'&&route.id&&getCampaign(route.id)){
+      const cp=getCampaign(route.id),existing=route.responseId?(cp.responses||[]).find(r=>r.id===route.responseId)||null:null;
+      entry(route.id,existing);return true
+    }
+    if(route.screen==='trash'){trashView();return true}
+    if(route.screen==='new'){newWizard();return true}
+    if(route.screen==='word'){draft=restoreDraft()||draft;if(draft){wordImport();return true}}
+    if(route.screen==='photo'){draft=restoreDraft()||draft;if(draft){photoImport();return true}}
+    if(route.screen==='builder'){draft=restoreDraft()||draft;builder();return true}
+    home();return true;
+  }catch(e){console.warn('Restauration Consultation AG',e);home();return true}
+}
+function scheduleRouteRestore(tryNo=0){
+  if(routeRestored||!readRoute())return;
+  const shell=document.getElementById('appShell');
+  if(hasSession()&&shell&&getComputedStyle(shell).display!=='none'){restoreRoute();return}
+  if(tryNo<10)setTimeout(()=>scheduleRouteRestore(tryNo+1),300);
+}
+
 function installNavigation(){
   if(document.documentElement.dataset.agProNavigation==='1')return;
   document.documentElement.dataset.agProNavigation='1';
@@ -580,6 +656,10 @@ function installNavigation(){
   },true);
 }
 
-style();root();installNavigation();
+style();visualStyle();root();installNavigation();
+setTimeout(()=>scheduleRouteRestore(),450);
+window.addEventListener('pageshow',()=>setTimeout(()=>scheduleRouteRestore(),120));
+window.addEventListener('horticulture-users-synced',()=>setTimeout(()=>scheduleRouteRestore(),80));
+document.getElementById('logout')?.addEventListener('click',clearRoute);
 window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION};
 })();
