@@ -33,5 +33,5 @@ window.addEventListener('horticulture-onesignal-click',e=>{const type=pushType(e
 window.addEventListener('pageshow',()=>{load();render()});
 document.addEventListener('click',e=>{const card=e.target.closest?.('.sugCard[data-id]');if(card)markSuggestionRead(String(card.dataset.id||''))},true);
 setTimeout(()=>{load();render();refresh(true)},1800);
-window.HorticultureLightBadges={refresh:()=>refresh(true),render,getItems:fallbackItems,getState:()=>({...state,items:state.items.slice()}),markItemRead,markSuggestionRead,clearAll};
+window.HorticultureLightBadges={refresh:()=>refresh(false),render,getItems:fallbackItems,getState:()=>({...state,items:state.items.slice()}),markItemRead,markSuggestionRead,clearAll};
 })();
