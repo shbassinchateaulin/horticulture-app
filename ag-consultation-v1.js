@@ -172,12 +172,18 @@ function db(){
 function saveDB(data){localStorage.setItem(STORE,JSON.stringify(data))}
 function campaigns(){return db().campaigns.filter(c=>!c.trashedAt)}
 function trashCampaigns(){return db().campaigns.filter(c=>!!c.trashedAt)}
-function saveCampaign(c){
+function saveCampaign(c,push=true){
   const d=db(),i=d.campaigns.findIndex(x=>x.id===c.id);
   c.updatedAt=now();
   if(i<0)d.campaigns.unshift(c);else d.campaigns[i]=c;
   saveDB(d);
-  agPushCampaign_(c);
+  if(push)agPushCampaign_(c);
+  return c;
+}
+async function saveCampaignConfirmed_(c){
+  saveCampaign(c,false);
+  const ok=await agPushCampaign_(c);
+  if(!ok)throw new Error("Impossible d'enregistrer cette consultation dans la base partagée.");
   return c;
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
@@ -639,13 +645,20 @@ function builder(){
   }
   draw();
 
-  function persist(){
+  async function persist(){
     syncHeader();
     draft.title=draft.title.trim()||'Questionnaire Assemblée générale';
     draft.sections.forEach(s=>{s.title=(s.title||'Section').trim()||'Section';s.questions=(s.questions||[]).filter(q=>(q.label||'').trim())});
     if(!allQuestions(draft).length)return alert('Ajoute au moins une question.');
     audit(draft,'Enregistrement du questionnaire',allQuestions(draft).length+' question(s)');
-    saveCampaign(draft);activeId=draft.id;clearDraft();draft=null;campaign(activeId,'overview');
+    const id=draft.id;
+    try{
+      await saveCampaignConfirmed_(draft);
+      activeId=id;clearDraft();draft=null;campaign(activeId,'overview');
+    }catch(e){
+      console.error(e);
+      alert("Le questionnaire est enregistré sur cet appareil, mais l'enregistrement dans Google Sheets a échoué. Réessaie dans quelques secondes.");
+    }
   }
   $('[data-back]',root()).onclick=()=>{saveDraft();newWizard()};
   $('[data-add-section]',root()).onclick=()=>{draft.sections.push({id:uid('sec'),title:'Nouvelle section',description:'',questions:[]});saveDraft();draw()};
@@ -699,9 +712,33 @@ function campaign(id,tab='overview'){
     '</div><div data-content></div>';
   $('[data-back]',root()).onclick=home;
   $$('[data-tab]',root()).forEach(b=>b.onclick=()=>campaign(id,b.dataset.tab));
-  $('[data-open-c]',root())?.addEventListener('click',()=>{c.status='open';audit(c,'Consultation ouverte');saveCampaign(c);campaign(id,'overview')});
-  $('[data-close-c]',root())?.addEventListener('click',()=>{c.status='closed';audit(c,'Consultation clôturée');saveCampaign(c);campaign(id,'results')});
-  $('[data-reopen]',root())?.addEventListener('click',()=>{c.status='open';audit(c,'Consultation réouverte');saveCampaign(c);campaign(id,'overview')});
+  $('[data-open-c]',root())?.addEventListener('click',async e=>{
+    const b=e.currentTarget,oldStatus=c.status;
+    b.disabled=true;b.textContent='Ouverture…';
+    c.status='open';audit(c,'Consultation ouverte');
+    try{
+      await saveCampaignConfirmed_(c);
+      campaign(id,'collect');
+    }catch(err){
+      c.status=oldStatus;saveCampaign(c,false);
+      console.error(err);alert("Impossible d'ouvrir la consultation : elle n'a pas été enregistrée dans Google Sheets.");
+      campaign(id,'overview');
+    }
+  });
+  $('[data-close-c]',root())?.addEventListener('click',async e=>{
+    const b=e.currentTarget,oldStatus=c.status;
+    b.disabled=true;b.textContent='Clôture…';
+    c.status='closed';audit(c,'Consultation clôturée');
+    try{await saveCampaignConfirmed_(c);campaign(id,'results')}
+    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de clôturer la consultation dans Google Sheets.");campaign(id,'overview')}
+  });
+  $('[data-reopen]',root())?.addEventListener('click',async e=>{
+    const b=e.currentTarget,oldStatus=c.status;
+    b.disabled=true;b.textContent='Réouverture…';
+    c.status='open';audit(c,'Consultation réouverte');
+    try{await saveCampaignConfirmed_(c);campaign(id,'collect')}
+    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de réouvrir la consultation dans Google Sheets.");campaign(id,'overview')}
+  });
   $('[data-print]',root()).onclick=()=>window.print();
   if(tab==='overview')overview(c);else if(tab==='collect')collect(c);else if(tab==='responses')responses(c);else if(tab==='results')results(c);else settings(c);
 }
@@ -754,13 +791,20 @@ function entry(id,existing=null){
     const missing=allQuestions(c).filter(q=>q.required&&(Array.isArray(a[q.id])?a[q.id].length===0:String(a[q.id]??'').trim()===''));
     if(missing.length){alert('Il manque '+missing.length+' réponse(s) obligatoire(s).');return false}return true;
   }
-  function store(next){
+  async function store(next){
     const a=collectAnswers();if(!valid(a))return;
-    const firstName=$('[data-first-name]',root())?.value.trim()||'',lastName=$('[data-last-name]',root())?.value.trim()||'';const row={id:existing?.id||uid('resp'),createdAt:existing?.createdAt||now(),updatedAt:now(),channel:'digital',respondentFirstName:firstName,respondentLastName:lastName,respondent:[firstName,lastName].filter(Boolean).join(' '),answers:a};
+    const firstName=$('[data-first-name]',root())?.value.trim()||'',lastName=$('[data-last-name]',root())?.value.trim()||'';const row={id:existing?.id||uid('resp'),createdAt:existing?.createdAt||now(),updatedAt:now(),channel:'paper',respondentFirstName:firstName,respondentLastName:lastName,respondent:[firstName,lastName].filter(Boolean).join(' '),answers:a};
     c.responses=c.responses||[];
+    const before=JSON.parse(JSON.stringify(c.responses));
     const i=c.responses.findIndex(r=>r.id===row.id);if(i<0)c.responses.push(row);else c.responses[i]=row;
-    audit(c,'Réponse enregistrée','Questionnaire n° '+c.responses.length);saveCampaign(c);
-    next?entry(id):campaign(id,'collect');
+    audit(c,'Réponse enregistrée','Questionnaire n° '+c.responses.length);
+    try{
+      await saveCampaignConfirmed_(c);
+      next?entry(id):campaign(id,'collect');
+    }catch(err){
+      c.responses=before;saveCampaign(c,false);console.error(err);
+      alert("La réponse n'a pas pu être enregistrée dans Google Sheets. Elle n'est pas comptabilisée.");
+    }
   }
   $('[data-save]',root()).onclick=()=>store(false);$('[data-next]',root()).onclick=()=>store(true);
 }
@@ -918,5 +962,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:17};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:18};
 })();
