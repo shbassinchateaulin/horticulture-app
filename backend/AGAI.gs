@@ -4,6 +4,7 @@
 
 const AG_AI_DEFAULT_MODEL='gemini-3.6-flash';
 const AG_AI_MAX_FILE_BYTES=8*1024*1024;
+const AG_AI_RETRY_DELAYS_MS=[700,1600];
 
 function agAiConfig_(){
   const p=PropertiesService.getScriptProperties();
@@ -20,12 +21,14 @@ function agAiCleanJson_(text){
     throw new Error('Réponse IA non exploitable.');
   }
 }
-function agAiNormalizeModel_(name){
-  return String(name||'').trim().replace(/^models\//,'');
-}
+function agAiNormalizeModel_(name){return String(name||'').trim().replace(/^models\//,'')}
 function agAiModelUnavailable_(status,message){
   const m=String(message||'').toLowerCase();
   return status===404||status===410||m.includes('no longer available')||m.includes('not found')||m.includes('not supported')||m.includes('is not available');
+}
+function agAiTemporaryFailure_(status,message){
+  const m=String(message||'').toLowerCase();
+  return status===429||status===500||status===502||status===503||status===504||m.includes('high demand')||m.includes('overloaded')||m.includes('temporarily unavailable')||m.includes('try again later')||m.includes('resource exhausted')||m.includes('quota exceeded');
 }
 function agAiDiscoverModels_(key){
   try{
@@ -34,131 +37,59 @@ function agAiDiscoverModels_(key){
     if(r.getResponseCode()<200||r.getResponseCode()>=300)return[];
     const j=JSON.parse(r.getContentText()||'{}');
     const models=(j.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.indexOf('generateContent')>=0).map(m=>agAiNormalizeModel_(m.name));
-    const score=name=>{
-      const n=String(name||'').toLowerCase();let s=0;
-      if(n.includes('flash'))s+=100;
-      if(n.includes('latest'))s+=40;
-      if(n.includes('stable'))s+=30;
-      if(n.includes('pro'))s+=10;
-      if(n.includes('preview')||n.includes('experimental')||n.includes('exp'))s-=20;
-      return s;
-    };
+    const score=name=>{const n=String(name||'').toLowerCase();let s=0;if(n.includes('flash'))s+=100;if(n.includes('latest'))s+=40;if(n.includes('stable'))s+=30;if(n.includes('pro'))s+=10;if(n.includes('preview')||n.includes('experimental')||n.includes('exp'))s-=20;return s};
     return models.sort((a,b)=>score(b)-score(a));
   }catch(_){return[]}
 }
 function agAiCandidateModels_(cfg){
-  const out=[];
-  const add=m=>{m=agAiNormalizeModel_(m);if(m&&out.indexOf(m)<0)out.push(m)};
-  add(cfg.model);
-  add(AG_AI_DEFAULT_MODEL);
-  agAiDiscoverModels_(cfg.key).forEach(add);
-  return out;
+  const out=[];const add=m=>{m=agAiNormalizeModel_(m);if(m&&out.indexOf(m)<0)out.push(m)};
+  add(cfg.model);add(AG_AI_DEFAULT_MODEL);agAiDiscoverModels_(cfg.key).forEach(add);return out;
 }
 function agAiCallModel_(cfg,model,parts,schema){
   const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(cfg.key);
   const payload={contents:[{role:'user',parts:parts}],generationConfig:{temperature:0.1,responseMimeType:'application/json',responseSchema:schema}};
-  const r=UrlFetchApp.fetch(url,{method:'post',contentType:'application/json',payload:JSON.stringify(payload),muteHttpExceptions:true});
-  const status=r.getResponseCode(),body=r.getContentText();
-  let j={};try{j=JSON.parse(body)}catch(_){}
-  const apiMessage=j&&j.error&&j.error.message?String(j.error.message):'';
-  if(status<200||status>=300)return{ok:false,status:status,apiMessage:apiMessage,error:'Gemini : '+(apiMessage||'erreur HTTP '+status)};
-  const text=(((j.candidates||[])[0]||{}).content||{}).parts||[];
-  const merged=text.map(x=>x.text||'').join('').trim();
-  if(!merged)return{ok:false,status:status,error:'Gemini n’a renvoyé aucun résultat.'};
-  try{return{ok:true,data:agAiCleanJson_(merged),model:model}}catch(e){return{ok:false,status:status,error:String(e.message||e)}}
+  try{
+    const r=UrlFetchApp.fetch(url,{method:'post',contentType:'application/json',payload:JSON.stringify(payload),muteHttpExceptions:true});
+    const status=r.getResponseCode(),body=r.getContentText();let j={};try{j=JSON.parse(body)}catch(_){}
+    const apiMessage=j&&j.error&&j.error.message?String(j.error.message):'';
+    if(status<200||status>=300)return{ok:false,status:status,apiMessage:apiMessage,error:'Gemini : '+(apiMessage||'erreur HTTP '+status)};
+    const text=(((j.candidates||[])[0]||{}).content||{}).parts||[],merged=text.map(x=>x.text||'').join('').trim();
+    if(!merged)return{ok:false,status:status,error:'Gemini n’a renvoyé aucun résultat.'};
+    try{return{ok:true,data:agAiCleanJson_(merged),model:model}}catch(e){return{ok:false,status:status,error:String(e.message||e)}}
+  }catch(e){return{ok:false,status:503,apiMessage:String(e.message||e),error:'Gemini : '+String(e.message||e)}}
 }
 function agAiCall_(parts,schema){
   const cfg=agAiConfig_();if(!cfg.ok)return cfg;
-  const models=agAiCandidateModels_(cfg);
-  let last=null;
+  const models=agAiCandidateModels_(cfg);let last=null,temporarySeen=false;
   for(let i=0;i<models.length;i++){
-    const r=agAiCallModel_(cfg,models[i],parts,schema);
-    if(r.ok)return r;
-    last=r;
-    if(!agAiModelUnavailable_(r.status,r.apiMessage||r.error))return r;
+    const model=models[i];
+    for(let attempt=0;attempt<=AG_AI_RETRY_DELAYS_MS.length;attempt++){
+      const r=agAiCallModel_(cfg,model,parts,schema);if(r.ok)return r;last=r;
+      const msg=r.apiMessage||r.error||'';
+      if(agAiModelUnavailable_(r.status,msg))break;
+      if(!agAiTemporaryFailure_(r.status,msg))return r;
+      temporarySeen=true;
+      if(attempt<AG_AI_RETRY_DELAYS_MS.length)Utilities.sleep(AG_AI_RETRY_DELAYS_MS[attempt]);
+    }
+    // Après les tentatives sur un modèle saturé, passe automatiquement au suivant.
   }
+  if(temporarySeen)return{ok:false,error:'Le service Gemini est temporairement très sollicité. Plusieurs modèles ont été essayés automatiquement. Réessaie dans quelques instants.'};
   return last||{ok:false,error:'Aucun modèle Gemini compatible avec generateContent n’est disponible pour cette clé API.'};
 }
 function agAiFilePart_(file){
-  file=file||{};
-  const mime=String(file.mimeType||'').trim(),data=String(file.data||'').replace(/^data:[^;]+;base64,/,'');
-  if(!data)return null;
-  const approx=Math.floor(data.length*3/4);
-  if(approx>AG_AI_MAX_FILE_BYTES)throw new Error('Le fichier est trop volumineux pour l’analyse IA (8 Mo maximum).');
+  file=file||{};const mime=String(file.mimeType||'').trim(),data=String(file.data||'').replace(/^data:[^;]+;base64/,'');
+  if(!data)return null;const approx=Math.floor(data.length*3/4);if(approx>AG_AI_MAX_FILE_BYTES)throw new Error('Le fichier est trop volumineux pour l’analyse IA (8 Mo maximum).');
   return{inlineData:{mimeType:mime||'application/octet-stream',data:data}};
 }
-function agAiQuestionnaireSchema_(){return{
-  type:'OBJECT',required:['title','sections'],properties:{
-    title:{type:'STRING'},
-    sections:{type:'ARRAY',items:{type:'OBJECT',required:['title','questions'],properties:{
-      title:{type:'STRING'},description:{type:'STRING'},
-      questions:{type:'ARRAY',items:{type:'OBJECT',required:['label','type','required','options'],properties:{
-        label:{type:'STRING'},type:{type:'STRING',enum:['text','yesno','scale','single','multi']},required:{type:'BOOLEAN'},
-        options:{type:'ARRAY',items:{type:'STRING'}},instruction:{type:'STRING'},minChoices:{type:'INTEGER'},maxChoices:{type:'INTEGER'}
-      }}}
-    }}}
-  }
-}}
-function agAiResponsesSchema_(){return{
-  type:'OBJECT',required:['responses'],properties:{
-    responses:{type:'ARRAY',items:{type:'OBJECT',required:['answers'],properties:{
-      respondentFirstName:{type:'STRING'},respondentLastName:{type:'STRING'},answers:{type:'OBJECT'}
-    }}},
-    warnings:{type:'ARRAY',items:{type:'STRING'}}
-  }
-}}
-function agAiQuestionnairePrompt_(){return[
-  'Tu es le moteur IA de création de questionnaires de la Société d’Horticulture et d’Art Floral du Bassin de Châteaulin.',
-  'Analyse intégralement le document fourni et reconstruis le questionnaire dans sa structure logique.',
-  'IMPORTANT : une question du document = un objet question distinct. Ne rassemble jamais plusieurs questions dans le même label.',
-  'Respecte l’ordre, les sections, les intitulés, les choix proposés et les consignes.',
-  'Déduis le type : text = réponse libre, yesno = Oui/Non, scale = échelle 1 à 5, single = un seul choix, multi = plusieurs choix.',
-  'Pour single/multi, place chaque choix dans options. Pour yesno et scale, options peut être vide.',
-  'Interprète les consignes : "une seule réponse", "2 réponses", "entre 2 et 4", "maximum 3", etc. Mets une consigne claire dans instruction et minChoices/maxChoices pour multi.',
-  'Ne transforme pas un titre, une introduction, une date ou une explication en question.',
-  'Si un document contient 10 questions, le JSON doit normalement contenir 10 objets question distincts.',
-  'Ne crée aucune information absente. En cas d’ambiguïté, choisis la structure la plus fidèle et laisse required=false.',
-  'Réponds uniquement selon le schéma JSON demandé.'
-].join('\n')}
+function agAiQuestionnaireSchema_(){return{type:'OBJECT',required:['title','sections'],properties:{title:{type:'STRING'},sections:{type:'ARRAY',items:{type:'OBJECT',required:['title','questions'],properties:{title:{type:'STRING'},description:{type:'STRING'},questions:{type:'ARRAY',items:{type:'OBJECT',required:['label','type','required','options'],properties:{label:{type:'STRING'},type:{type:'STRING',enum:['text','yesno','scale','single','multi']},required:{type:'BOOLEAN'},options:{type:'ARRAY',items:{type:'STRING'}},instruction:{type:'STRING'},minChoices:{type:'INTEGER'},maxChoices:{type:'INTEGER'}}}}}}}}}}
+function agAiResponsesSchema_(){return{type:'OBJECT',required:['responses'],properties:{responses:{type:'ARRAY',items:{type:'OBJECT',required:['answers'],properties:{respondentFirstName:{type:'STRING'},respondentLastName:{type:'STRING'},answers:{type:'OBJECT'}}}},warnings:{type:'ARRAY',items:{type:'STRING'}}}}}
+function agAiQuestionnairePrompt_(){return['Tu es le moteur IA de création de questionnaires de la Société d’Horticulture et d’Art Floral du Bassin de Châteaulin.','Analyse intégralement le document fourni et reconstruis le questionnaire dans sa structure logique.','IMPORTANT : une question du document = un objet question distinct. Ne rassemble jamais plusieurs questions dans le même label.','Respecte l’ordre, les sections, les intitulés, les choix proposés et les consignes.','Déduis le type : text = réponse libre, yesno = Oui/Non, scale = échelle 1 à 5, single = un seul choix, multi = plusieurs choix.','Pour single/multi, place chaque choix dans options. Pour yesno et scale, options peut être vide.','Interprète les consignes : "une seule réponse", "2 réponses", "entre 2 et 4", "maximum 3", etc. Mets une consigne claire dans instruction et minChoices/maxChoices pour multi.','Ne transforme pas un titre, une introduction, une date ou une explication en question.','Si un document contient 10 questions, le JSON doit normalement contenir 10 objets question distincts.','Ne crée aucune information absente. En cas d’ambiguïté, choisis la structure la plus fidèle et laisse required=false.','Réponds uniquement selon le schéma JSON demandé.'].join('\n')}
 function agAnalyzeQuestionnaireAI_(payload,userId,generation){
-  const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
-  payload=payload||{};
-  const parts=[{text:agAiQuestionnairePrompt_()}];
-  if(payload.file&&payload.file.data){try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}}
-  if(String(payload.text||'').trim())parts.push({text:'CONTENU EXTRAIT DU DOCUMENT :\n'+String(payload.text).slice(0,120000)});
-  if(parts.length<2)return{ok:false,error:'Aucun contenu à analyser.'};
-  const result=agAiCall_(parts,agAiQuestionnaireSchema_());if(!result.ok)return result;
-  const d=result.data||{};
-  if(!Array.isArray(d.sections)||!d.sections.length)return{ok:false,error:'Gemini n’a détecté aucune section exploitable.'};
-  let count=0;d.sections.forEach(s=>{if(Array.isArray(s.questions))count+=s.questions.length});
-  if(!count)return{ok:false,error:'Gemini n’a détecté aucune question exploitable.'};
-  return{ok:true,questionnaire:d,questionCount:count,model:result.model};
+  const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;payload=payload||{};const parts=[{text:agAiQuestionnairePrompt_()}];
+  if(payload.file&&payload.file.data){try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}}if(String(payload.text||'').trim())parts.push({text:'CONTENU EXTRAIT DU DOCUMENT :\n'+String(payload.text).slice(0,120000)});if(parts.length<2)return{ok:false,error:'Aucun contenu à analyser.'};
+  const result=agAiCall_(parts,agAiQuestionnaireSchema_());if(!result.ok)return result;const d=result.data||{};if(!Array.isArray(d.sections)||!d.sections.length)return{ok:false,error:'Gemini n’a détecté aucune section exploitable.'};let count=0;d.sections.forEach(s=>{if(Array.isArray(s.questions))count+=s.questions.length});if(!count)return{ok:false,error:'Gemini n’a détecté aucune question exploitable.'};return{ok:true,questionnaire:d,questionCount:count,model:result.model};
 }
-function agAiResponsesPrompt_(campaign){
-  const qs=[];(campaign.sections||[]).forEach(s=>(s.questions||[]).forEach(q=>qs.push({id:String(q.id||''),label:String(q.label||''),type:String(q.type||'text'),options:q.options||[],minChoices:q.minChoices||null,maxChoices:q.maxChoices||null})));
-  return [
-    'Tu es le moteur IA de dépouillement des réponses papier de la Société d’Horticulture et d’Art Floral du Bassin de Châteaulin.',
-    'Le questionnaire EXISTE DÉJÀ. Tu ne dois jamais créer, supprimer, fusionner ou renommer les questions.',
-    'Analyse le fichier fourni et récupère uniquement les réponses des personnes.',
-    'Chaque bulletin / ligne / personne doit devenir un objet distinct dans responses.',
-    'Dans answers, utilise EXCLUSIVEMENT les identifiants de questions fournis ci-dessous comme clés.',
-    'Pour text : chaîne. Pour yesno/single/scale : une valeur. Pour multi : tableau de valeurs.',
-    'N’invente jamais une réponse illisible ou absente : omets la clé correspondante.',
-    'Si le fichier est un tableau, une ligne de répondant = une response. Si c’est la photo d’un seul bulletin, renvoie une seule response.',
-    'Ajoute dans warnings les ambiguïtés importantes.',
-    'QUESTIONNAIRE DE RÉFÉRENCE : '+JSON.stringify(qs),
-    'Réponds uniquement selon le schéma JSON demandé.'
-  ].join('\n')
-}
+function agAiResponsesPrompt_(campaign){const qs=[];(campaign.sections||[]).forEach(s=>(s.questions||[]).forEach(q=>qs.push({id:String(q.id||''),label:String(q.label||''),type:String(q.type||'text'),options:q.options||[],minChoices:q.minChoices||null,maxChoices:q.maxChoices||null})));return['Tu es le moteur IA de dépouillement des réponses papier de la Société d’Horticulture et d’Art Floral du Bassin de Châteaulin.','Le questionnaire EXISTE DÉJÀ. Tu ne dois jamais créer, supprimer, fusionner ou renommer les questions.','Analyse le fichier fourni et récupère uniquement les réponses des personnes.','Chaque bulletin / ligne / personne doit devenir un objet distinct dans responses.','Dans answers, utilise EXCLUSIVEMENT les identifiants de questions fournis ci-dessous comme clés.','Pour text : chaîne. Pour yesno/single/scale : une valeur. Pour multi : tableau de valeurs.','N’invente jamais une réponse illisible ou absente : omets la clé correspondante.','Si le fichier est un tableau, une ligne de répondant = une response. Si c’est la photo d’un seul bulletin, renvoie une seule response.','Ajoute dans warnings les ambiguïtés importantes.','QUESTIONNAIRE DE RÉFÉRENCE : '+JSON.stringify(qs),'Réponds uniquement selon le schéma JSON demandé.'].join('\n')}
 function agAnalyzeResponsesAI_(payload,userId,generation){
-  const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
-  payload=payload||{};const campaign=payload.campaign||{};
-  if(!campaign.id||!Array.isArray(campaign.sections))return{ok:false,error:'Questionnaire de référence manquant.'};
-  const parts=[{text:agAiResponsesPrompt_(campaign)}];
-  if(payload.file&&payload.file.data){try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}}
-  if(String(payload.text||'').trim())parts.push({text:'CONTENU À DÉPOUILLER :\n'+String(payload.text).slice(0,120000)});
-  if(parts.length<2)return{ok:false,error:'Aucun contenu à analyser.'};
-  const result=agAiCall_(parts,agAiResponsesSchema_());if(!result.ok)return result;
-  const d=result.data||{};if(!Array.isArray(d.responses)||!d.responses.length)return{ok:false,error:'Gemini n’a détecté aucune réponse exploitable.'};
-  return{ok:true,responses:d.responses,warnings:Array.isArray(d.warnings)?d.warnings:[],model:result.model};
+  const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;payload=payload||{};const campaign=payload.campaign||{};if(!campaign.id||!Array.isArray(campaign.sections))return{ok:false,error:'Questionnaire de référence manquant.'};const parts=[{text:agAiResponsesPrompt_(campaign)}];if(payload.file&&payload.file.data){try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}}if(String(payload.text||'').trim())parts.push({text:'CONTENU À DÉPOUILLER :\n'+String(payload.text).slice(0,120000)});if(parts.length<2)return{ok:false,error:'Aucun contenu à analyser.'};const result=agAiCall_(parts,agAiResponsesSchema_());if(!result.ok)return result;const d=result.data||{};if(!Array.isArray(d.responses)||!d.responses.length)return{ok:false,error:'Gemini n’a détecté aucune réponse exploitable.'};return{ok:true,responses:d.responses,warnings:Array.isArray(d.warnings)?d.warnings:[],model:result.model};
 }
