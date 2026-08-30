@@ -1,4 +1,4 @@
-const VERSION='v103-ag-fresh-modules';
+const VERSION='v104-ag-save-redirect';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -57,7 +57,8 @@ self.addEventListener('fetch',e=>{
 
     let source=await r.text();
 
-    // Enregistrement natif du concepteur : local immédiat, puis Sheets en arrière-plan.
+    // Enregistrement natif du concepteur : local immédiat, puis ouverture
+    // automatique de la fiche du questionnaire et synchro Sheets en arrière-plan.
     source=source.replace(
       /  async function persist\(\)\{[\s\S]*?\n  \}\n  \$\('\[data-back\]'/,
 `  let persistBusy=false;
@@ -77,7 +78,20 @@ self.addEventListener('fetch',e=>{
     activeId=id;
     clearDraft();
     draft=null;
-    campaign(activeId,'overview');
+
+    // On laisse finir l'évènement de clic avant de changer complètement d'écran.
+    // Cela évite que le concepteur reste visuellement figé après l'enregistrement.
+    const openSavedCampaign=()=>{
+      const savedCampaign=getCampaign(id)||getAnyCampaign(id);
+      if(!savedCampaign)return false;
+      activeId=id;
+      campaign(id,'overview');
+      return true;
+    };
+    requestAnimationFrame(()=>{
+      if(!openSavedCampaign())setTimeout(openSavedCampaign,40);
+    });
+
     setTimeout(()=>{agPushCampaign_(saved).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e))},0);
   }
   $('[data-back]'`
