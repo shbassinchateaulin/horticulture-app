@@ -12,7 +12,9 @@ const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
 const AG_PENDING_DELETE='horticulture-ag-pending-delete-v1';
-let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agSharedFailed=false,agPendingWrites=0,agLastSyncAt=0,agDraftPushTimer=null;
+const AG_SYNC_AT='horticulture-ag-last-sync-v1';
+let agLastSyncAt=Number(localStorage.getItem(AG_SYNC_AT)||0)||0;
+let agSharedReady=agLastSyncAt>0&&Date.now()-agLastSyncAt<60000,agSharedBusy=false,agSharedLastLoad=agSharedReady?agLastSyncAt:0,agSharedFailed=false,agPendingWrites=0,agDraftPushTimer=null;
 
 function saveRoute(route){
   try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
@@ -101,11 +103,15 @@ async function agFetchJson_(url,options,maxAttempts=4){
   }
   throw last||new Error('Connexion à la base Consultation AG impossible');
 }
+function agMarkSynced_(){
+  agSharedReady=true;agSharedFailed=false;agLastSyncAt=Date.now();agSharedLastLoad=agLastSyncAt;
+  try{localStorage.setItem(AG_SYNC_AT,String(agLastSyncAt))}catch(_){}
+}
 function agSyncLabel_(){
-  if(agPendingWrites>0)return 'Synchronisation en cours…';
-  if(agSharedReady)return 'Base partagée connectée — données à jour';
-  if(agSharedFailed)return 'Connexion serveur en attente — nouvelle tentative automatique';
-  return 'Connexion à la base partagée…';
+  if(agPendingWrites>0)return 'Enregistrement sur la base partagée…';
+  if(agSharedReady)return 'Données disponibles — mise à jour serveur en arrière-plan';
+  if(agSharedFailed)return 'Données disponibles — nouvelle tentative serveur automatique';
+  return 'Données disponibles — connexion serveur en arrière-plan';
 }
 function agUpdateSyncLabel_(){
   const el=$('[data-ag-sync-status]',root());
@@ -130,7 +136,7 @@ async function agPushCampaign_(campaign){
     const copy=JSON.parse(JSON.stringify(campaign));
     const j=await agPostShared_('saveAGCampaign',{campaign:copy});
     if(!j)return false;
-    agSharedReady=true;agSharedFailed=false;agLastSyncAt=Date.now();return true;
+    agMarkSynced_();return true;
   }catch(e){
     agSharedFailed=true;
     console.warn('Base Consultation AG — enregistrement',e);return false
@@ -145,7 +151,7 @@ async function agDeleteShared_(campaignId){
     const j=await agPostShared_('deleteAGCampaign',{campaignId:id});
     if(!j)throw new Error('Session indisponible');
     agSetPendingDeletes_(agPendingDeletes_().filter(x=>x!==id));
-    agSharedReady=true;agSharedFailed=false;agLastSyncAt=Date.now();return true;
+    agMarkSynced_();return true;
   }catch(e){
     agSharedFailed=true;
     const pending=agPendingDeletes_();if(!pending.includes(id)){pending.push(id);agSetPendingDeletes_(pending)}
@@ -205,7 +211,7 @@ async function agRefreshShared_(force=false){
       return !r||agTime_(item.updatedAt)>agTime_(r.updatedAt);
     });
 
-    agSharedReady=true;agSharedFailed=false;agSharedLastLoad=Date.now();agLastSyncAt=Date.now();
+    agMarkSynced_();
     agUpdateSyncLabel_();
 
     // Les écritures locales partent en arrière-plan : elles ne bloquent plus l'ouverture de l'écran.
@@ -223,13 +229,18 @@ function agRefreshSharedSoon_(){
     if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true);
     else agUpdateSyncLabel_();
   };
+  if(agSharedReady&&Date.now()-agSharedLastLoad<15000){
+    agUpdateSyncLabel_();
+    setTimeout(()=>agRefreshShared_(true).then(redraw),900);
+    return;
+  }
   agRefreshShared_(true).then(ok=>{
     redraw(ok);
     if(ok)return;
     setTimeout(()=>agRefreshShared_(true).then(ok2=>{
       redraw(ok2);
-      if(!ok2)setTimeout(()=>agRefreshShared_(true).then(redraw),1800);
-    }),700);
+      if(!ok2)setTimeout(()=>agRefreshShared_(true).then(redraw),1500);
+    }),450);
   });
 }
 function agStateFingerprint_(){
@@ -253,6 +264,11 @@ async function agRefreshVisible_(){
     getCampaign(activeId)?campaign(activeId,route?.tab||'overview'):home(true);
   }
   return true;
+}
+function agWarmShared_(){
+  if(document.hidden||document.body.classList.contains('agWorkspaceMode'))return;
+  if(!agAuth_())return;
+  agRefreshShared_(false).catch(()=>{});
 }
 function agLiveSyncLoop_(){
   setTimeout(async()=>{
@@ -1131,15 +1147,16 @@ function installNavigation(){
 
 style();visualStyle();root();installNavigation();agLiveSyncLoop_();
 setTimeout(()=>scheduleRouteRestore(),450);
-window.addEventListener('pageshow',()=>setTimeout(()=>scheduleRouteRestore(),120));
+window.addEventListener('pageshow',()=>{setTimeout(()=>scheduleRouteRestore(),120);setTimeout(agWarmShared_,500)});
 window.addEventListener('horticulture-users-synced',()=>{
   setTimeout(()=>scheduleRouteRestore(),80);
   if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))setTimeout(()=>agRefreshShared_(true).then(ok=>{
     if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true)
   }),180);
+  else setTimeout(agWarmShared_,200);
 });
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();setAGActive_(false);document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:28};
+window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:29};
 })();
