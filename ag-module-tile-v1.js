@@ -13,8 +13,22 @@ function clearAGRoute_(){
 }
 function resetAGVisualState_(clearRoute=false){
  document.body.classList.remove('agWorkspaceMode');
- document.getElementById('agConsultation')?.classList.remove('active');
+ const ag=document.getElementById('agConsultation');
+ ag?.classList.remove('active');
+ if(ag)ag.style.removeProperty('display');
  if(clearRoute)clearAGRoute_();
+}
+function forceAGVisible_(){
+ const ag=document.getElementById('agConsultation');
+ if(!ag)return false;
+ document.querySelectorAll('main.app > .view').forEach(v=>{
+   const on=v===ag;
+   v.classList.toggle('active',on);
+   v.style.setProperty('display',on?'block':'none','important');
+ });
+ ag.hidden=false;
+ document.body.classList.add('agWorkspaceMode');
+ return true;
 }
 
 // Un rafraîchissement doit repartir de l'Administration normale.
@@ -26,6 +40,11 @@ function runAG_(){
  try{
    if(typeof window.HorticultureAG?.open==='function'){
      window.HorticultureAG.open();
+     // access-route-fix peut avoir laissé display:none!important sur la vue AG
+     // après un retour par le logo. On rétablit explicitement toute la vue.
+     forceAGVisible_();
+     setTimeout(forceAGVisible_,0);
+     setTimeout(forceAGVisible_,60);
      return true;
    }
  }catch(err){console.error('Ouverture Consultation AG',err)}
@@ -36,7 +55,8 @@ function openAG(e){
  const t=Date.now();if(t-lastOpen<350)return;lastOpen=t;
  if(runAG_())return;
  [60,180,420].forEach(ms=>setTimeout(()=>{
-   if(!document.getElementById('agConsultation')?.classList.contains('active'))runAG_();
+   const ag=document.getElementById('agConsultation');
+   if(!ag?.classList.contains('active')||getComputedStyle(ag).display==='none')runAG_();
  },ms));
 }
 function isAGControl_(target){
@@ -66,6 +86,7 @@ function openSavedOverview_(id){
  if(typeof fn!=='function')return false;
  try{
    fn(id,'overview');
+   forceAGVisible_();
    pendingSaveOpen='';
    return true;
  }catch(err){
