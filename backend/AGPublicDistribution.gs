@@ -4,6 +4,7 @@
 const AG_DISTRIBUTION_SHEET='AG Diffusion';
 const AG_DISTRIBUTION_HEADERS=['id','campaignId','memberId','firstName','lastName','email','tokenHash','kind','sentAt','respondedAt','lastError','createdAt'];
 const AG_PUBLIC_APP_URL='https://shbassinchateaulin.github.io/horticulture-app/consultation.html';
+const AG_PUBLIC_SHARE_PREFIX='AG_PUBLIC_SHARE_';
 
 function agDistributionSheet_(){return adherentsSheet_(AG_DISTRIBUTION_SHEET,AG_DISTRIBUTION_HEADERS)}
 function agActiveMembers_(){
@@ -31,11 +32,29 @@ function agFindDistributionByToken_(token){
   for(let i=1;i<rows.length;i++)if(String(rows[i][6]||'')===wanted)return{sheet:sh,row:i+1,data:rows[i]};
   return null;
 }
+function agPublicShareToken_(campaignId){
+  campaignId=String(campaignId||'');if(!campaignId)return'';
+  const props=PropertiesService.getScriptProperties(),key=AG_PUBLIC_SHARE_PREFIX+campaignId;
+  let token=props.getProperty(key);
+  if(!token){token=campaignId+'.'+agRandomToken_();props.setProperty(key,token)}
+  return token;
+}
+function agPublicShareCampaignId_(token){
+  token=String(token||'');const p=token.indexOf('.');if(p<1)return'';
+  const campaignId=token.slice(0,p),saved=PropertiesService.getScriptProperties().getProperty(AG_PUBLIC_SHARE_PREFIX+campaignId);
+  return saved&&saved===token?campaignId:'';
+}
+function agGetPublicShare_(campaignId,userId,generation){
+  const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
+  const c=agCampaignServer_(campaignId);if(!c)return{ok:false,error:'Questionnaire introuvable.'};
+  const token=agPublicShareToken_(campaignId);
+  return{ok:true,campaignId:String(campaignId),status:String(c.status||''),token:token,url:AG_PUBLIC_APP_URL+'?t='+encodeURIComponent(token)};
+}
 function agDistributionSummary_(campaignId,userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   adherentsEnsureDb_();
   const members=agActiveMembers_(),withEmail=members.filter(m=>m.email);
-  const sh=agDistributionSheet_(),rows=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1).filter(r=>String(r[1])===String(campaignId));
+  const sh=agDistributionSheet_(),rows=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1).filter(r=>String(r[1])===String(campaignId)&&String(r[7]||'')==='member');
   const sent=rows.filter(r=>r[8]).length,responded=rows.filter(r=>r[9]).length,failed=rows.filter(r=>r[10]).length;
   return{ok:true,totalMembers:members.length,withEmail:withEmail.length,withoutEmail:members.length-withEmail.length,prepared:rows.length,sent:sent,responded:responded,failed:failed,remaining:Math.max(0,sent-responded),mailQuota:MailApp.getRemainingDailyQuota(),membersSpreadsheetId:ADHERENTS_SPREADSHEET_ID};
 }
@@ -45,7 +64,7 @@ function agPrepareDistribution_(campaignId,userId,generation){
   adherentsEnsureDb_();
   const members=agActiveMembers_(),sh=agDistributionSheet_();
   const existing=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1);
-  const existingKeys=new Set(existing.filter(r=>String(r[1])===String(campaignId)).map(r=>String(r[2])+'|'+String(r[5]).toLowerCase()));
+  const existingKeys=new Set(existing.filter(r=>String(r[1])===String(campaignId)&&String(r[7]||'')==='member').map(r=>String(r[2])+'|'+String(r[5]).toLowerCase()));
   let created=0;
   members.filter(m=>m.email).forEach(m=>{
     const key=String(m.id)+'|'+m.email;if(existingKeys.has(key))return;
@@ -98,25 +117,32 @@ function agPublicCampaign_(token,previewId){
     const c=agCampaignServer_(previewId);if(!c||c.status!=='open')return{ok:false,error:'Cette consultation n’est pas disponible.'};
     return{ok:true,preview:true,campaign:{id:c.id,title:c.title,year:c.year,status:c.status,settings:c.settings,sections:c.sections}};
   }
+  const sharedId=agPublicShareCampaignId_(token);
+  if(sharedId){
+    const c=agCampaignServer_(sharedId);if(!c||c.status!=='open')return{ok:false,error:'Cette consultation est clôturée ou indisponible.'};
+    return{ok:true,shared:true,alreadyResponded:false,member:{firstName:'',lastName:''},campaign:{id:c.id,title:c.title,year:c.year,status:c.status,settings:c.settings,sections:c.sections}};
+  }
   const d=agFindDistributionByToken_(token);if(!d)return{ok:false,error:'Lien invalide ou expiré.'};
   const r=d.data,c=agCampaignServer_(String(r[1]||''));if(!c||c.status!=='open')return{ok:false,error:'Cette consultation est clôturée ou indisponible.'};
   return{ok:true,alreadyResponded:!!r[9],member:{firstName:String(r[3]||''),lastName:String(r[4]||'')},campaign:{id:c.id,title:c.title,year:c.year,status:c.status,settings:c.settings,sections:c.sections}};
 }
 function agSubmitPublicResponse_(token,answers){
-  const d=agFindDistributionByToken_(token);if(!d)return{ok:false,error:'Lien invalide ou expiré.'};
-  const r=d.data;if(r[9])return{ok:false,error:'Une réponse a déjà été enregistrée avec ce lien.',alreadyResponded:true};
-  const c=agCampaignServer_(String(r[1]||''));if(!c||c.status!=='open')return{ok:false,error:'Cette consultation n’est plus ouverte.'};
+  const sharedId=agPublicShareCampaignId_(token);
+  let d=null,r=null,c=null,shared=false;
+  if(sharedId){shared=true;c=agCampaignServer_(sharedId)}
+  else{d=agFindDistributionByToken_(token);if(!d)return{ok:false,error:'Lien invalide ou expiré.'};r=d.data;if(r[9])return{ok:false,error:'Une réponse a déjà été enregistrée avec ce lien.',alreadyResponded:true};c=agCampaignServer_(String(r[1]||''))}
+  if(!c||c.status!=='open')return{ok:false,error:'Cette consultation n’est plus ouverte.'};
   answers=answers||{};const qs=(c.sections||[]).flatMap(s=>s.questions||[]);
   const missing=qs.filter(q=>q.required&&(Array.isArray(answers[q.id])?answers[q.id].length===0:String(answers[q.id]??'').trim()===''));
   if(missing.length)return{ok:false,error:'Certaines questions obligatoires ne sont pas renseignées.'};
   const identity=((c.settings||{}).identityMode||((c.settings||{}).anonymous?'anonymous':'optional'));
-  const first=identity==='anonymous'?'':String(r[3]||''),last=identity==='anonymous'?'':String(r[4]||'');
+  const first=shared||identity==='anonymous'?'':String(r[3]||''),last=shared||identity==='anonymous'?'':String(r[4]||'');
   const filled=qs.filter(q=>Array.isArray(answers[q.id])?answers[q.id].length:String(answers[q.id]??'').trim()).length;
   const at=new Date().toISOString(),responseId=Utilities.getUuid(),completion=qs.length?Math.round(filled*100/qs.length):0;
   const rsh=agSheet_(AG_RESPONSES_SHEET,AG_RESPONSE_HEADERS);
-  rsh.appendRow([responseId,c.id,first,last,[first,last].filter(Boolean).join(' '),'email',at,at,JSON.stringify(answers),completion]);
-  d.sheet.getRange(d.row,10).setValue(at);
-  const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);ash.appendRow([Utilities.getUuid(),c.id,at,'Réponse numérique reçue','Questionnaire en ligne']);
+  rsh.appendRow([responseId,c.id,first,last,[first,last].filter(Boolean).join(' '),shared?'public':'email',at,at,JSON.stringify(answers),completion]);
+  if(!shared)d.sheet.getRange(d.row,10).setValue(at);
+  const ash=agSheet_(AG_AUDIT_SHEET,AG_AUDIT_HEADERS);ash.appendRow([Utilities.getUuid(),c.id,at,'Réponse numérique reçue',shared?'Lien public / QR code':'Questionnaire en ligne']);
   SpreadsheetApp.flush();return{ok:true,message:'Merci, votre réponse a bien été enregistrée.'};
 }
 
@@ -135,6 +161,7 @@ doPost=function(e){
     if(b.action==='prepareAGDistribution')return json_(agPrepareDistribution_(b.campaignId||'',b.userId||'',b.generation||''));
     if(b.action==='sendAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',false));
     if(b.action==='remindAGInvitations')return json_(agSendInvitations_(b.campaignId||'',b.userId||'',b.generation||'',true));
+    if(b.action==='getAGPublicShare')return json_(agGetPublicShare_(b.campaignId||'',b.userId||'',b.generation||''));
     if(b.action==='submitAGPublicResponse')return json_(agSubmitPublicResponse_(b.t||'',b.answers||{}));
   }catch(err){return json_({ok:false,error:String(err)})}
   return agBaseDoPost_(e);
