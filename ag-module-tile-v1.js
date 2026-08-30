@@ -1,16 +1,24 @@
 (()=>{
 const PERM='consultation_ag';
 const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M8 12h3M8 16h3M14 8h2M14 12h2M14 16h2"/><path d="m8 8 .8.8L10.5 7"/></svg>`;
+let lastOpen=0;
 function openAG(e){
  if(e){e.preventDefault();e.stopPropagation()}
+ const t=Date.now();if(t-lastOpen<500)return;lastOpen=t;
  document.getElementById('drawer')?.classList.remove('open');
- const run=()=>{if(typeof window.HorticultureAG?.open==='function'){window.HorticultureAG.open();return true}return false};
+ const run=()=>{
+   try{
+     if(typeof window.HorticultureAG?.open==='function'){window.HorticultureAG.open();return true}
+   }catch(err){console.error('Ouverture Consultation AG',err)}
+   return false
+ };
  if(run())return;
  setTimeout(()=>{if(!run())setTimeout(run,180)},80);
 }
 function wire(b){
  if(!b||b.dataset.agMobileOpen==='1')return;
  b.dataset.agMobileOpen='1';
+ b.addEventListener('pointerup',e=>{if(e.pointerType==='touch'||e.pointerType==='pen')openAG(e)},{passive:false});
  b.addEventListener('click',openAG);
 }
 function add(){
