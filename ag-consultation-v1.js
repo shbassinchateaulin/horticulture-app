@@ -148,7 +148,7 @@ function newWizard(){
 
 function blankCampaign(){
   const y=new Date().getFullYear();
-  return {id:uid('ag'),title:'Consultation Assemblée générale '+y,year:String(y),status:'draft',createdAt:now(),updatedAt:now(),source:{type:'manual',name:''},settings:{anonymous:true,allowMultiple:true,showProgress:true},sections:[{id:uid('sec'),title:'Questionnaire',description:'',questions:[]}],responses:[],audit:[]};
+  return {id:uid('ag'),title:'Consultation Assemblée générale '+y,year:String(y),status:'draft',createdAt:now(),updatedAt:now(),source:{type:'manual',name:''},settings:{anonymous:false,identityMode:'optional',allowMultiple:true,showProgress:true},sections:[{id:uid('sec'),title:'Questionnaire',description:'',questions:[]}],responses:[],audit:[]};
 }
 function templateCampaign(){
   const c=blankCampaign();c.source={type:'template',name:'Modèle AG'};
@@ -257,7 +257,7 @@ function builder(){
   root().innerHTML=
     '<button class="back" data-back>← Retour</button>'+
     '<div class="agTop"><div><h1>Concepteur de questionnaire</h1><p>Structure par sections, types de réponses, options, aperçu et sauvegarde automatique du brouillon.</p></div><div class="agToolbar"><button class="agBtn" data-preview>Aperçu</button><button class="agPrimary" data-save>Enregistrer</button></div></div>'+
-    '<div class="agPanel"><div class="agTwo"><div class="agField"><label>Titre</label><input data-title value="'+esc(draft.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(draft.year||'')+'"></div></div><div class="agTwo"><div class="agField"><label>Anonymat</label><select data-anon><option value="1" '+(draft.settings?.anonymous?'selected':'')+'>Réponses anonymes</option><option value="0" '+(!draft.settings?.anonymous?'selected':'')+'>Nom du répondant facultatif</option></select></div><div class="agField"><label>Statut initial</label><select data-status><option value="draft" '+(draft.status==='draft'?'selected':'')+'>Brouillon</option><option value="open" '+(draft.status==='open'?'selected':'')+'>Ouvert</option></select></div></div></div>'+
+    '<div class="agPanel"><div class="agTwo"><div class="agField"><label>Titre</label><input data-title value="'+esc(draft.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(draft.year||'')+'"></div></div><div class="agTwo"><div class="agField"><label>Identification du répondant</label><select data-identity><option value="optional" '+(identityMode(draft)==='optional'?'selected':'')+'>Prénom et nom facultatifs</option><option value="anonymous" '+(identityMode(draft)==='anonymous'?'selected':'')+'>Réponse totalement anonyme</option></select></div><div class="agField"><label>Statut initial</label><select data-status><option value="draft" '+(draft.status==='draft'?'selected':'')+'>Brouillon</option><option value="open" '+(draft.status==='open'?'selected':'')+'>Ouvert</option></select></div></div></div>'+
     '<div data-sections></div>'+
     '<div class="agToolbar"><button class="agBtn" data-add-section>＋ Ajouter une section</button><button class="agPrimary" data-save-bottom>Enregistrer le questionnaire</button></div>';
   const wrap=$('[data-sections]',root());
@@ -266,11 +266,11 @@ function builder(){
     draft.title=$('[data-title]',root()).value;
     draft.year=$('[data-year]',root()).value;
     draft.settings=draft.settings||{};
-    draft.settings.anonymous=$('[data-anon]',root()).value==='1';
+    draft.settings.identityMode=$('[data-identity]',root()).value;draft.settings.anonymous=draft.settings.identityMode==='anonymous';
     draft.status=$('[data-status]',root()).value;
     saveDraft();
   }
-  $('[data-title]',root()).oninput=syncHeader;$('[data-year]',root()).oninput=syncHeader;$('[data-anon]',root()).onchange=syncHeader;$('[data-status]',root()).onchange=syncHeader;
+  $('[data-title]',root()).oninput=syncHeader;$('[data-year]',root()).oninput=syncHeader;$('[data-identity]',root()).onchange=syncHeader;$('[data-status]',root()).onchange=syncHeader;
 
   function draw(){
     wrap.innerHTML=draft.sections.map((sec,si)=>
@@ -412,7 +412,7 @@ function entry(id,existing=null){
     '<button class="back" data-back>← Retour à la collecte</button>'+
     '<div class="agTop"><div><h1>Saisie d’un questionnaire</h1><p>Questionnaire papier n° '+number+' • sauvegarde au moment de l’enregistrement</p></div></div>'+
     '<div class="agCollector"><div class="agPanel">'+
-    (!c.settings?.anonymous?'<div class="agField"><label>Nom du répondant (facultatif)</label><input data-name value="'+esc(existing?.respondent||'')+'"></div>':'')+
+    (identityMode(c)==='optional'?'<div class="agTwo"><div class="agField"><label>Prénom (facultatif)</label><input data-first-name value="'+esc(existing?.respondentFirstName||'')+'"></div><div class="agField"><label>Nom (facultatif)</label><input data-last-name value="'+esc(existing?.respondentLastName||existing?.respondent||'')+'"></div></div>':'')+
     renderFormFields(c,true,answers)+
     '<div class="agToolbar"><button class="agPrimary" data-save>Enregistrer</button><button class="agBtn" data-next>Enregistrer et saisir le suivant</button></div></div></div>';
   $('[data-back]',root()).onclick=()=>campaign(id,'collect');
@@ -430,7 +430,7 @@ function entry(id,existing=null){
   }
   function store(next){
     const a=collectAnswers();if(!valid(a))return;
-    const row={id:existing?.id||uid('resp'),createdAt:existing?.createdAt||now(),updatedAt:now(),channel:'paper',respondent:$('[data-name]',root())?.value||'',answers:a};
+    const firstName=$('[data-first-name]',root())?.value.trim()||'',lastName=$('[data-last-name]',root())?.value.trim()||'';const row={id:existing?.id||uid('resp'),createdAt:existing?.createdAt||now(),updatedAt:now(),channel:'digital',respondentFirstName:firstName,respondentLastName:lastName,respondent:[firstName,lastName].filter(Boolean).join(' '),answers:a};
     c.responses=c.responses||[];
     const i=c.responses.findIndex(r=>r.id===row.id);if(i<0)c.responses.push(row);else c.responses[i]=row;
     audit(c,'Réponse enregistrée','Questionnaire n° '+c.responses.length);saveCampaign(c);
@@ -501,17 +501,17 @@ function bar(label,count,total){
 
 function settings(c){
   $('[data-content]',root()).innerHTML=
-    '<div class="agTwo"><div class="agPanel"><h3>Paramètres du questionnaire</h3><div class="agField"><label>Titre</label><input data-title value="'+esc(c.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(c.year||'')+'"></div><div class="agField"><label>Anonymat</label><select data-anon><option value="1" '+(c.settings?.anonymous?'selected':'')+'>Anonyme</option><option value="0" '+(!c.settings?.anonymous?'selected':'')+'>Nom facultatif</option></select></div><div class="agToolbar" style="margin-top:14px"><button class="agPrimary" data-save>Enregistrer</button><button class="agBtn" data-edit>Modifier les questions</button></div></div>'+
+    '<div class="agTwo"><div class="agPanel"><h3>Paramètres du questionnaire</h3><div class="agField"><label>Titre</label><input data-title value="'+esc(c.title)+'"></div><div class="agField"><label>Année / saison</label><input data-year value="'+esc(c.year||'')+'"></div><div class="agField"><label>Identification du répondant</label><select data-identity><option value="optional" '+(identityMode(c)==='optional'?'selected':'')+'>Prénom et nom facultatifs</option><option value="anonymous" '+(identityMode(c)==='anonymous'?'selected':'')+'>Réponse totalement anonyme</option></select></div><div class="agToolbar" style="margin-top:14px"><button class="agPrimary" data-save>Enregistrer</button><button class="agBtn" data-edit>Modifier les questions</button></div></div>'+
     '<div class="agPanel"><h3>Maintenance</h3><div class="agNotice">Les données de ce module sont sauvegardées dans l’application. Utilise régulièrement « Exporter la sauvegarde » depuis l’accueil de Consultation AG.</div><div class="agToolbar" style="margin-top:14px"><button class="agBtn" data-dup>Dupliquer le questionnaire</button><button class="agDanger" data-delete>Supprimer le questionnaire</button></div></div></div>';
-  $('[data-save]',root()).onclick=()=>{c.title=$('[data-title]',root()).value.trim()||c.title;c.year=$('[data-year]',root()).value;c.settings=c.settings||{};c.settings.anonymous=$('[data-anon]',root()).value==='1';audit(c,'Paramètres modifiés');saveCampaign(c);campaign(c.id,'settings')};
+  $('[data-save]',root()).onclick=()=>{c.title=$('[data-title]',root()).value.trim()||c.title;c.year=$('[data-year]',root()).value;c.settings=c.settings||{};c.settings.identityMode=$('[data-identity]',root()).value;c.settings.anonymous=c.settings.identityMode==='anonymous';audit(c,'Paramètres modifiés');saveCampaign(c);campaign(c.id,'settings')};
   $('[data-edit]',root()).onclick=()=>{draft=JSON.parse(JSON.stringify(c));saveDraft();builder()};
   $('[data-dup]',root()).onclick=()=>{const copy=JSON.parse(JSON.stringify(c));copy.id=uid('ag');copy.title+=' — copie';copy.status='draft';copy.createdAt=now();copy.updatedAt=now();copy.responses=[];copy.audit=[];audit(copy,'Questionnaire dupliqué',c.title);saveCampaign(copy);campaign(copy.id,'overview')};
   $('[data-delete]',root()).onclick=()=>{if(confirm('Supprimer définitivement ce questionnaire et toutes ses réponses ?')){removeCampaign(c.id);home()}};
 }
 
 function exportCSV(c){
-  const qs=allQuestions(c),rows=[['Numéro','Date','Canal','Répondant',...qs.map(q=>q.label)]];
-  (c.responses||[]).forEach((r,i)=>rows.push([i+1,r.createdAt,r.channel||'',r.respondent||'',...qs.map(q=>Array.isArray(r.answers?.[q.id])?r.answers[q.id].join(' | '):(r.answers?.[q.id]||''))]));
+  const qs=allQuestions(c),rows=[['Numéro','Date','Canal','Prénom','Nom',...qs.map(q=>q.label)]];
+  (c.responses||[]).forEach((r,i)=>rows.push([i+1,r.createdAt,r.channel||'',r.respondentFirstName||'',r.respondentLastName||r.respondent||'',...qs.map(q=>Array.isArray(r.answers?.[q.id])?r.answers[q.id].join(' | '):(r.answers?.[q.id]||''))]));
   const csv='\ufeff'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');
   downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),safeName(c.title)+'.csv');
 }
