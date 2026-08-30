@@ -46,6 +46,30 @@ function agAuth_(){
 function agSleep_(ms){return new Promise(r=>setTimeout(r,ms))}
 async function agEnsureAuth_(){
   let auth=agAuth_();if(auth)return auth;
+  const session=agSession_();
+
+  // Le Super Admin intégré à l'application existait historiquement seulement
+  // dans le navigateur. On l'enregistre une fois dans la base Administration
+  // afin que le serveur puisse lui délivrer une génération de session AG.
+  if(String(session?.id||'')==='superadmin'){
+    try{
+      const superUser={
+        id:'superadmin',firstName:'Super',lastName:'Admin',email:'',
+        function:'Super Admin',role:'Super Admin',username:'superadmin',
+        passwordHash:'04445e6487736590d1ef50186b414e737e0164683cbbec64e00e73c000fd3bef',
+        firstLogin:false,active:true,
+        permissions:['communication','sorties','adherents','comptabilite','suggestions','consultation_ag','acces']
+      };
+      const r=await fetch(AG_API,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'createUser',user:superUser}),
+        cache:'no-store'
+      });
+      await r.text().catch(()=>{});
+    }catch(e){console.warn('Initialisation serveur Super Admin',e)}
+  }
+
   try{await window.HorticultureSessions?.check?.()}catch(_){}
   auth=agAuth_();if(auth)return auth;
   for(const ms of [450,1000,2200]){
@@ -182,9 +206,17 @@ function saveCampaign(c,push=true){
 }
 async function saveCampaignConfirmed_(c){
   saveCampaign(c,false);
-  const ok=await agPushCampaign_(c);
-  if(!ok)throw new Error("Impossible d'enregistrer cette consultation dans la base partagée.");
-  return c;
+  try{
+    const auth=await agEnsureAuth_();
+    if(!auth)throw new Error("Session serveur indisponible. Reconnecte-toi à l'application.");
+    const copy=JSON.parse(JSON.stringify(c||{}));
+    const j=await agPostShared_('saveAGCampaign',{campaign:copy});
+    if(!j?.ok)throw new Error(j?.error||"Enregistrement Google Sheets refusé.");
+    agSharedReady=true;
+    return c;
+  }catch(err){
+    throw new Error(err?.message||String(err)||"Enregistrement Google Sheets impossible.");
+  }
 }
 function getCampaign(id){return campaigns().find(x=>x.id===id)||null}
 function getAnyCampaign(id){return db().campaigns.find(x=>x.id===id)||null}
@@ -657,7 +689,7 @@ function builder(){
       activeId=id;clearDraft();draft=null;campaign(activeId,'overview');
     }catch(e){
       console.error(e);
-      alert("Le questionnaire est enregistré sur cet appareil, mais l'enregistrement dans Google Sheets a échoué. Réessaie dans quelques secondes.");
+      alert("Google Sheets : "+(e?.message||"enregistrement impossible."));
     }
   }
   $('[data-back]',root()).onclick=()=>{saveDraft();newWizard()};
@@ -721,7 +753,7 @@ function campaign(id,tab='overview'){
       campaign(id,'collect');
     }catch(err){
       c.status=oldStatus;saveCampaign(c,false);
-      console.error(err);alert("Impossible d'ouvrir la consultation : elle n'a pas été enregistrée dans Google Sheets.");
+      console.error(err);alert("Impossible d'ouvrir la consultation. Google Sheets : "+(err?.message||"enregistrement impossible."));
       campaign(id,'overview');
     }
   });
@@ -730,14 +762,14 @@ function campaign(id,tab='overview'){
     b.disabled=true;b.textContent='Clôture…';
     c.status='closed';audit(c,'Consultation clôturée');
     try{await saveCampaignConfirmed_(c);campaign(id,'results')}
-    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de clôturer la consultation dans Google Sheets.");campaign(id,'overview')}
+    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de clôturer la consultation. Google Sheets : "+(err?.message||"enregistrement impossible."));campaign(id,'overview')}
   });
   $('[data-reopen]',root())?.addEventListener('click',async e=>{
     const b=e.currentTarget,oldStatus=c.status;
     b.disabled=true;b.textContent='Réouverture…';
     c.status='open';audit(c,'Consultation réouverte');
     try{await saveCampaignConfirmed_(c);campaign(id,'collect')}
-    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de réouvrir la consultation dans Google Sheets.");campaign(id,'overview')}
+    catch(err){c.status=oldStatus;saveCampaign(c,false);console.error(err);alert("Impossible de réouvrir la consultation. Google Sheets : "+(err?.message||"enregistrement impossible."));campaign(id,'overview')}
   });
   $('[data-print]',root()).onclick=()=>window.print();
   if(tab==='overview')overview(c);else if(tab==='collect')collect(c);else if(tab==='responses')responses(c);else if(tab==='results')results(c);else settings(c);
@@ -803,7 +835,7 @@ function entry(id,existing=null){
       next?entry(id):campaign(id,'collect');
     }catch(err){
       c.responses=before;saveCampaign(c,false);console.error(err);
-      alert("La réponse n'a pas pu être enregistrée dans Google Sheets. Elle n'est pas comptabilisée.");
+      alert("Réponse non enregistrée. Google Sheets : "+(err?.message||"enregistrement impossible."));
     }
   }
   $('[data-save]',root()).onclick=()=>store(false);$('[data-next]',root()).onclick=()=>store(true);
@@ -962,5 +994,5 @@ window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>schedule
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)})});
 document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:18};
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:19};
 })();
