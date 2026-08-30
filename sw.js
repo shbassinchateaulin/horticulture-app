@@ -1,4 +1,4 @@
-const VERSION='v104-ag-save-redirect';
+const VERSION='v105-ag-direct-campaign';
 
 self.addEventListener('install',()=>{self.skipWaiting();});
 
@@ -78,20 +78,7 @@ self.addEventListener('fetch',e=>{
     activeId=id;
     clearDraft();
     draft=null;
-
-    // On laisse finir l'évènement de clic avant de changer complètement d'écran.
-    // Cela évite que le concepteur reste visuellement figé après l'enregistrement.
-    const openSavedCampaign=()=>{
-      const savedCampaign=getCampaign(id)||getAnyCampaign(id);
-      if(!savedCampaign)return false;
-      activeId=id;
-      campaign(id,'overview');
-      return true;
-    };
-    requestAnimationFrame(()=>{
-      if(!openSavedCampaign())setTimeout(openSavedCampaign,40);
-    });
-
+    campaign(id,'overview');
     setTimeout(()=>{agPushCampaign_(saved).catch(e=>console.warn('Synchronisation Google Sheets en arrière-plan',e))},0);
   }
   $('[data-back]'`
@@ -108,6 +95,14 @@ self.addEventListener('fetch',e=>{
       "  clearRoute();setAGActive_(false);\n  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))"
     );
     source=source.replaceAll("$('.view').forEach(v=>v.classList.remove('active'));","$$('.view').forEach(v=>v.classList.remove('active'));");
+
+    // Expose uniquement la navigation directe vers une fiche existante. Cela permet
+    // au petit module de navigation de garantir l'ouverture après Enregistrer sans
+    // déclencher « Continuer », qui renvoie volontairement vers le concepteur.
+    source=source.replace(
+      "window.HorticultureAG={open:openAGSafe_,new:newWizard,version:APP_VERSION,syncVersion:31};",
+      "window.HorticultureAG={open:openAGSafe_,new:newWizard,openCampaign:(id,tab='overview')=>campaign(id,tab),version:APP_VERSION,syncVersion:32};"
+    );
 
     return new Response(source,{
       status:r.status,statusText:r.statusText,
