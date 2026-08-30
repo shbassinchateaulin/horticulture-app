@@ -4,6 +4,7 @@ const STORE='horticulture-ag-pro-v2';
 const DRAFT='horticulture-ag-pro-draft-v2';
 const APP_VERSION=2;
 const ROUTE_KEY='horticulture-ag-route-v3';
+const AG_ACTIVE_KEY='horticulture-ag-active-v1';
 let activeId='',draft=null,screen='home';
 let routeRestored=false;
 const AG_API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
@@ -11,7 +12,7 @@ const AG_SESSION='horticulture-admin-session-v1';
 const AG_PERSIST='horticulture-admin-persistent-session-v1';
 const AG_GENERATION='horticulture-session-generation-v1';
 const AG_PENDING_DELETE='horticulture-ag-pending-delete-v1';
-let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agDraftPushTimer=null;
+let agSharedReady=false,agSharedBusy=false,agSharedLastLoad=0,agSharedFailed=false,agDraftPushTimer=null;
 
 function saveRoute(route){
   try{localStorage.setItem(ROUTE_KEY,JSON.stringify({...route,at:Date.now()}))}catch(_){}
@@ -21,6 +22,12 @@ function readRoute(){
 }
 function clearRoute(){
   try{localStorage.removeItem(ROUTE_KEY)}catch(_){}
+}
+function setAGActive_(on){
+  try{on?sessionStorage.setItem(AG_ACTIVE_KEY,'1'):sessionStorage.removeItem(AG_ACTIVE_KEY)}catch(_){}
+}
+function isAGActive_(){
+  try{return sessionStorage.getItem(AG_ACTIVE_KEY)==='1'}catch{return false}
 }
 function hasSession(){
   return !!(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1'));
@@ -178,15 +185,16 @@ async function agRefreshShared_(force=false){
       if(!r||agTime_(item.updatedAt)>agTime_(r.updatedAt))await agPushCampaign_(item);
     }
 
-    agSharedReady=true;agSharedLastLoad=Date.now();return true;
+    agSharedReady=true;agSharedFailed=false;agSharedLastLoad=Date.now();return true;
   }catch(e){
+    agSharedFailed=true;
     console.warn('Base Consultation AG — lecture',e);
     return false
   }finally{agSharedBusy=false}
 }
 function agRefreshSharedSoon_(){
-  [0,900,2800].forEach((delay,index)=>setTimeout(()=>agRefreshShared_(true).then(ok=>{
-    if(ok&&screen==='home'&&index===0)home(true)
+  [0,900,2800].forEach(delay=>setTimeout(()=>agRefreshShared_(true).then(ok=>{
+    if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true)
   }),delay));
 }
 function agStateFingerprint_(){
@@ -302,6 +310,7 @@ function root(){
   return s;
 }
 function showRoot(){
+  setAGActive_(true);
   document.body.classList.add('agWorkspaceMode');
   $$('.view').forEach(v=>v.classList.remove('active'));
   root().classList.add('active');
@@ -309,6 +318,7 @@ function showRoot(){
 }
 function backHome(){
   clearRoute();
+  setAGActive_(false);
   document.body.classList.remove('agWorkspaceMode');
   $$('.view').forEach(v=>v.classList.remove('active'));
   $('#home')?.classList.add('active');
@@ -444,7 +454,7 @@ function home(fromShared=false){
         '<div class="agSearchArea"><label class="agSearchBox">'+agSvg('search')+'<input data-search placeholder="Rechercher..."></label><button class="agFilterBtn" data-sort>'+agSvg('filter')+'<span>Filtrer</span><span>⌄</span></button></div>'+
       '</section>'+
       '<section class="agList" data-list></section>'+
-      '<div class="agLocalFoot">'+agSvg('lock')+(agSharedReady?'Données synchronisées avec la base partagée de l’association':'Stockage local — synchronisation avec la base en attente')+'</div>'+
+      '<div class="agLocalFoot">'+agSvg('lock')+(agSharedReady?'Données synchronisées avec la base partagée de l’association':agSharedFailed?'Synchronisation serveur en attente — nouvelle tentative automatique':'Connexion à la base partagée…')+'</div>'+
     '</main>'+
   '</div>'+
   '<input data-restore-file type="file" accept=".json,application/json" hidden>';
@@ -1026,6 +1036,7 @@ function restoreRoute(){
 }
 function scheduleRouteRestore(tryNo=0){
   if(routeRestored||!readRoute())return;
+  if(!isAGActive_()){clearRoute();return}
   const shell=document.getElementById('appShell');
   if(hasSession()&&shell&&getComputedStyle(shell).display!=='none'){restoreRoute();return}
   if(tryNo<10)setTimeout(()=>scheduleRouteRestore(tryNo+1),300);
@@ -1043,6 +1054,7 @@ function installNavigation(){
     document.body.classList.remove('agWorkspaceMode');
     root().classList.remove('active');
     clearRoute();
+    setAGActive_(false);
   },true);
 
   document.addEventListener('click',e=>{
@@ -1065,9 +1077,14 @@ function installNavigation(){
 style();visualStyle();root();installNavigation();agLiveSyncLoop_();
 setTimeout(()=>scheduleRouteRestore(),450);
 window.addEventListener('pageshow',()=>setTimeout(()=>scheduleRouteRestore(),120));
-window.addEventListener('horticulture-users-synced',()=>{setTimeout(()=>scheduleRouteRestore(),80);if(screen==='home')setTimeout(()=>agRefreshShared_(true).then(ok=>{if(ok&&screen==='home')home(true)}),180)});
+window.addEventListener('horticulture-users-synced',()=>{
+  setTimeout(()=>scheduleRouteRestore(),80);
+  if(screen==='home'&&document.body.classList.contains('agWorkspaceMode'))setTimeout(()=>agRefreshShared_(true).then(ok=>{
+    if(ok&&screen==='home'&&document.body.classList.contains('agWorkspaceMode'))home(true)
+  }),180);
+});
 window.addEventListener('focus',()=>{if(document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('agWorkspaceMode'))agRefreshVisible_()});
-document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();document.body.classList.remove('agWorkspaceMode')});
-window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:25};
+document.getElementById('logout')?.addEventListener('click',()=>{clearRoute();setAGActive_(false);document.body.classList.remove('agWorkspaceMode')});
+window.HorticultureAG={open:home,new:newWizard,version:APP_VERSION,syncVersion:26};
 })();
