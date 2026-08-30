@@ -3,7 +3,9 @@
 
 function adherentsAdminSeason_(){
   const d=new Date(),y=d.getFullYear(),m=d.getMonth();
-  const start=m>=8?y:y-1;
+  // La saison associative bascule le 1er novembre :
+  // 01/11/2025 -> 31/10/2026 = 2025-2026, etc.
+  const start=m>=10?y:y-1;
   return start+'-'+(start+1);
 }
 function adherentsAdminHeaders_(){
