@@ -1,6 +1,6 @@
 // AGAI.gs — Gemini AI engines for Consultation AG
 // Script Properties required: GEMINI_API_KEY
-// Optional: GEMINI_MODEL (default: gemini-3.6-flash)
+// Optional: GEMINI_MODEL (preferred model; automatic fallback/discovery is enabled)
 
 const AG_AI_DEFAULT_MODEL='gemini-3.6-flash';
 const AG_AI_MAX_FILE_BYTES=8*1024*1024;
@@ -20,21 +20,64 @@ function agAiCleanJson_(text){
     throw new Error('Réponse IA non exploitable.');
   }
 }
-function agAiCall_(parts,schema){
-  const cfg=agAiConfig_();if(!cfg.ok)return cfg;
-  const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(cfg.model)+':generateContent?key='+encodeURIComponent(cfg.key);
-  const payload={
-    contents:[{role:'user',parts:parts}],
-    generationConfig:{temperature:0.1,responseMimeType:'application/json',responseSchema:schema}
-  };
+function agAiNormalizeModel_(name){
+  return String(name||'').trim().replace(/^models\//,'');
+}
+function agAiModelUnavailable_(status,message){
+  const m=String(message||'').toLowerCase();
+  return status===404||status===410||m.includes('no longer available')||m.includes('not found')||m.includes('not supported')||m.includes('is not available');
+}
+function agAiDiscoverModels_(key){
+  try{
+    const url='https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key);
+    const r=UrlFetchApp.fetch(url,{method:'get',muteHttpExceptions:true});
+    if(r.getResponseCode()<200||r.getResponseCode()>=300)return[];
+    const j=JSON.parse(r.getContentText()||'{}');
+    const models=(j.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.indexOf('generateContent')>=0).map(m=>agAiNormalizeModel_(m.name));
+    const score=name=>{
+      const n=String(name||'').toLowerCase();let s=0;
+      if(n.includes('flash'))s+=100;
+      if(n.includes('latest'))s+=40;
+      if(n.includes('stable'))s+=30;
+      if(n.includes('pro'))s+=10;
+      if(n.includes('preview')||n.includes('experimental')||n.includes('exp'))s-=20;
+      return s;
+    };
+    return models.sort((a,b)=>score(b)-score(a));
+  }catch(_){return[]}
+}
+function agAiCandidateModels_(cfg){
+  const out=[];
+  const add=m=>{m=agAiNormalizeModel_(m);if(m&&out.indexOf(m)<0)out.push(m)};
+  add(cfg.model);
+  add(AG_AI_DEFAULT_MODEL);
+  agAiDiscoverModels_(cfg.key).forEach(add);
+  return out;
+}
+function agAiCallModel_(cfg,model,parts,schema){
+  const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(cfg.key);
+  const payload={contents:[{role:'user',parts:parts}],generationConfig:{temperature:0.1,responseMimeType:'application/json',responseSchema:schema}};
   const r=UrlFetchApp.fetch(url,{method:'post',contentType:'application/json',payload:JSON.stringify(payload),muteHttpExceptions:true});
   const status=r.getResponseCode(),body=r.getContentText();
   let j={};try{j=JSON.parse(body)}catch(_){}
-  if(status<200||status>=300)return{ok:false,error:'Gemini : '+(j&&j.error&&j.error.message?j.error.message:'erreur HTTP '+status)};
+  const apiMessage=j&&j.error&&j.error.message?String(j.error.message):'';
+  if(status<200||status>=300)return{ok:false,status:status,apiMessage:apiMessage,error:'Gemini : '+(apiMessage||'erreur HTTP '+status)};
   const text=(((j.candidates||[])[0]||{}).content||{}).parts||[];
   const merged=text.map(x=>x.text||'').join('').trim();
-  if(!merged)return{ok:false,error:'Gemini n’a renvoyé aucun résultat.'};
-  try{return{ok:true,data:agAiCleanJson_(merged),model:cfg.model}}catch(e){return{ok:false,error:String(e.message||e)}}
+  if(!merged)return{ok:false,status:status,error:'Gemini n’a renvoyé aucun résultat.'};
+  try{return{ok:true,data:agAiCleanJson_(merged),model:model}}catch(e){return{ok:false,status:status,error:String(e.message||e)}}
+}
+function agAiCall_(parts,schema){
+  const cfg=agAiConfig_();if(!cfg.ok)return cfg;
+  const models=agAiCandidateModels_(cfg);
+  let last=null;
+  for(let i=0;i<models.length;i++){
+    const r=agAiCallModel_(cfg,models[i],parts,schema);
+    if(r.ok)return r;
+    last=r;
+    if(!agAiModelUnavailable_(r.status,r.apiMessage||r.error))return r;
+  }
+  return last||{ok:false,error:'Aucun modèle Gemini compatible avec generateContent n’est disponible pour cette clé API.'};
 }
 function agAiFilePart_(file){
   file=file||{};
@@ -81,9 +124,7 @@ function agAnalyzeQuestionnaireAI_(payload,userId,generation){
   const auth=agAuthorize_(userId,generation);if(!auth.ok)return auth;
   payload=payload||{};
   const parts=[{text:agAiQuestionnairePrompt_()}];
-  if(payload.file&&payload.file.data){
-    try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}
-  }
+  if(payload.file&&payload.file.data){try{parts.push(agAiFilePart_(payload.file))}catch(e){return{ok:false,error:String(e.message||e)}}}
   if(String(payload.text||'').trim())parts.push({text:'CONTENU EXTRAIT DU DOCUMENT :\n'+String(payload.text).slice(0,120000)});
   if(parts.length<2)return{ok:false,error:'Aucun contenu à analyser.'};
   const result=agAiCall_(parts,agAiQuestionnaireSchema_());if(!result.ok)return result;
