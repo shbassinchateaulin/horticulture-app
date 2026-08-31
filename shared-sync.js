@@ -20,5 +20,5 @@ if(!window.__horticultureAdherentsImportFetchBridge){window.__horticultureAdhere
 function loadScript(id,src){if(document.getElementById(id))return;const s=document.createElement('script');s.id=id;s.src=src;s.async=false;document.head.appendChild(s)}
 loadScript('adherentsAdminV2','./adherents-admin-v2.js?v=4');
 loadScript('adherentsImportReviewV1','./adherents-import-review-v1.js?v=2');
-loadScript('stableAppRouterV1','./app-router-stable-v1.js?v=2');
+loadScript('routeCoreV2','./app-router-core-v2.js?v=1');
 })();
