@@ -1,18 +1,15 @@
 (()=>{
 'use strict';
-// Notifications internes désactivées. OneSignal reste le seul système de notifications.
-document.querySelectorAll('.notifCenterTray,.pushBellBadge,.pushSugBadge').forEach(el=>el.remove());
-function clean(){
-  document.querySelectorAll('.notifCenterTray,.pushBellBadge,.pushSugBadge').forEach(el=>el.remove());
-  const bell=document.querySelector('.admBell,[data-notification-bell]');
-  if(bell){
-    bell.removeAttribute('data-notification-bell');
-    bell.style.display='none';
-  }
-}
-clean();
-setTimeout(clean,300);
-setTimeout(clean,1000);
-window.addEventListener('pageshow',clean);
-window.HorticultureNotificationCenter=undefined;
+if(window.__horticultureNotificationInboxHost)return;
+window.__horticultureNotificationInboxHost=true;
+function session(){const raw=localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1')||'';try{const s=JSON.parse(raw);return s.user||s||null}catch(_){return null}}
+function userId(){const u=session();return String(u?.id||u?.userId||u?.username||'')}
+function bell(){let b=document.querySelector('.admBell,[data-notification-bell]');if(!b)b=document.querySelector('#appShell .top button:last-child');if(!b)return null;b.classList.add('admBell');b.dataset.notificationBell='1';b.style.display='';b.innerHTML='<span aria-hidden="true">🔔</span><span class="notifInboxBadge" hidden></span>';b.title='Notifications';b.setAttribute('aria-label','Notifications');return b}
+function close(){document.getElementById('notifInboxOverlay')?.remove()}
+function open(){const uid=userId();if(!uid)return;close();const o=document.createElement('div');o.id='notifInboxOverlay';o.innerHTML='<div class="notifInboxPanel"><div class="notifInboxHead"><b>Notifications</b><button type="button" data-notif-close aria-label="Fermer">×</button></div><iframe title="Boîte de notifications" src="./notification-inbox.html?v=1&userId='+encodeURIComponent(uid)+'"></iframe></div>';document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o||e.target.closest('[data-notif-close]'))close()})}
+function init(){const b=bell();if(!b||b.dataset.inboxBound)return;b.dataset.inboxBound='1';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();open()})}
+const style=document.createElement('style');style.id='notification-inbox-host-style';style.textContent='.admBell{position:relative}.notifInboxBadge{position:absolute;right:4px;top:3px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#d92d20;color:#fff;font:800 10px/16px system-ui;text-align:center}#notifInboxOverlay{position:fixed;inset:0;z-index:2147482000;background:#0006;display:flex;justify-content:center;align-items:flex-start;padding:82px 14px 20px}#notifInboxOverlay .notifInboxPanel{width:min(440px,100%);height:min(580px,calc(100vh - 110px));background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 70px #0004;display:grid;grid-template-rows:52px 1fr}.notifInboxHead{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #e1e8e3;color:#173126}.notifInboxHead button{width:36px;height:36px;border:0;border-radius:10px;background:#f0f4f1;font-size:22px;color:#42534a}.notifInboxPanel iframe{width:100%;height:100%;border:0;background:#f5f8f5}@media(max-width:600px){#notifInboxOverlay{padding:68px 8px 8px;align-items:stretch}#notifInboxOverlay .notifInboxPanel{height:100%;border-radius:18px 18px 12px 12px}}';document.head.appendChild(style);
+window.addEventListener('message',e=>{if(e.origin!==location.origin||e.data?.source!=='horticulture-notification-inbox')return;const b=bell(),badge=b?.querySelector('.notifInboxBadge'),n=Number(e.data.unread||0);if(!badge)return;badge.hidden=!n;badge.textContent=n>99?'99+':String(n)});
+window.addEventListener('pageshow',init);window.addEventListener('horticulture-users-synced',init);setTimeout(init,250);setTimeout(init,900);
+window.HorticultureNotificationCenter={open,close};
 })();
