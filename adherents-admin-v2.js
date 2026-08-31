@@ -1,12 +1,10 @@
 (()=>{
 'use strict';
-// Charge la dernière version fonctionnelle directement depuis GitHub Pages.
-// Le paramètre de version évite qu'un téléphone conserve une ancienne copie CDN.
 if(window.HorticultureAdherents)return;
 const s=document.createElement('script');
 s.id='adherentsAdminRecoveredV2';
-s.src='./adherents-admin-stable.js?v=1';
+s.src='https://cdn.jsdelivr.net/gh/shbassinchateaulin/horticulture-app@cc767ff41cfc5c1006330ae6547926db93fdbb54/adherents-admin-v2.js?v=20260831';
 s.async=false;
-s.onerror=()=>console.error('Impossible de charger le module Adhérents.');
+s.onerror=()=>console.error('Impossible de charger le module Adhérents de secours.');
 document.head.appendChild(s);
 })();
