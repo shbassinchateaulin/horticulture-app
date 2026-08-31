@@ -1,5 +1,5 @@
-const VERSION='v138-rollback-visible-app';
+const VERSION='v139-drawer-authority-v2';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener('notificationclick',e=>{e.notification.close();const data=e.notification.data||{},target=data.url||'./';e.waitUntil((async()=>{const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});for(const c of list){if('focus'in c){await c.focus();return}}if(self.clients.openWindow)return self.clients.openWindow(target)})())});
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url),fresh=u.pathname.endsWith('/ag-consultation-v1.js')||u.pathname.endsWith('/ag-module-tile-v1.js')||u.pathname.endsWith('/shared-sync.js')||u.pathname.endsWith('/navigation-authority-v1.js')||/\/adherents-admin-v\d+\.js$/.test(u.pathname);if(!fresh)return;e.respondWith(fetch(e.request,{cache:'no-store'}))});
+self.addEventListener('fetch',e=>{const u=new URL(e.request.url),fresh=u.pathname.endsWith('/ag-consultation-v1.js')||u.pathname.endsWith('/ag-module-tile-v1.js')||u.pathname.endsWith('/shared-sync.js')||u.pathname.endsWith('/drawer-controller-v1.js')||/\/adherents-admin-v\d+\.js$/.test(u.pathname);if(!fresh)return;e.respondWith(fetch(e.request,{cache:'no-store'}))});
