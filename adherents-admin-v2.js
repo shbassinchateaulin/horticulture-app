@@ -1,11 +1,20 @@
 (()=>{
 'use strict';
+function loadSortiesSafe(){
+  if(document.getElementById('sortiesSafeV1'))return;
+  const x=document.createElement('script');
+  x.id='sortiesSafeV1';
+  x.src='./sorties-safe-v1.js?v=1';
+  x.async=false;
+  document.head.appendChild(x);
+}
 function loadPageRestore(){
-  if(document.getElementById('adherentsPageRestoreV1'))return;
+  if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}
   const r=document.createElement('script');
   r.id='adherentsPageRestoreV1';
   r.src='./adherents-page-restore-v1.js?v=1';
   r.async=false;
+  r.onload=loadSortiesSafe;
   document.head.appendChild(r);
 }
 function loadContactBridge(){
@@ -23,6 +32,6 @@ s.id='adherentsAdminRecoveredV2';
 s.src='https://cdn.jsdelivr.net/gh/shbassinchateaulin/horticulture-app@cc767ff41cfc5c1006330ae6547926db93fdbb54/adherents-admin-v2.js?v=20260831';
 s.async=false;
 s.onload=loadContactBridge;
-s.onerror=()=>console.error('Impossible de charger le module Adhérents de secours.');
+s.onerror=()=>{console.error('Impossible de charger le module Adhérents de secours.');loadSortiesSafe();};
 document.head.appendChild(s);
 })();
