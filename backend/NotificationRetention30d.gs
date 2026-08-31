@@ -1,5 +1,8 @@
 // NotificationRetention30d.gs — nettoyage indépendant de la mini-boîte de notifications.
-// À ajouter au même projet Apps Script puis déclencher une fois par jour.
+// Après avoir collé ce fichier dans Apps Script, exécuter UNE SEULE FOIS :
+// installerNettoyageNotifications30Jours()
+// Le déclencheur quotidien sera ensuite créé automatiquement.
+
 function nettoyerNotifications30Jours(){
   const ss=SpreadsheetApp.getActiveSpreadsheet();
   const sh=ss.getSheetByName('Notifications');
@@ -20,4 +23,35 @@ function nettoyerNotifications30Jours(){
     for(let i=rv.length-1;i>=1;i--)if(set.has(String(rv[i][0]||'')))reads.deleteRow(i+1);
   }
   return{ok:true,deleted:ids.length};
+}
+
+function installerNettoyageNotifications30Jours(){
+  const fonction='nettoyerNotifications30Jours';
+  const existants=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===fonction);
+
+  // Évite de créer plusieurs déclencheurs identiques si l'installation est relancée.
+  if(existants.length===0){
+    ScriptApp.newTrigger(fonction)
+      .timeBased()
+      .everyDays(1)
+      .atHour(3)
+      .create();
+  }else if(existants.length>1){
+    existants.slice(1).forEach(t=>ScriptApp.deleteTrigger(t));
+  }
+
+  // Lance aussi un premier nettoyage immédiatement.
+  const resultat=nettoyerNotifications30Jours();
+  Logger.log('Nettoyage notifications installé. Déclencheur quotidien actif vers 03:00.');
+  Logger.log(JSON.stringify(resultat));
+  return {ok:true,triggerCreated:existants.length===0,dailyAtHour:3,firstCleanup:resultat};
+}
+
+function desinstallerNettoyageNotifications30Jours(){
+  const fonction='nettoyerNotifications30Jours';
+  let deleted=0;
+  ScriptApp.getProjectTriggers().forEach(t=>{
+    if(t.getHandlerFunction()===fonction){ScriptApp.deleteTrigger(t);deleted++}
+  });
+  return{ok:true,deleted:deleted};
 }
