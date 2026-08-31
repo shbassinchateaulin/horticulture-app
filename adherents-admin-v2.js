@@ -1,11 +1,20 @@
 (()=>{
 'use strict';
+function loadPageRestore(){
+  if(document.getElementById('adherentsPageRestoreV1'))return;
+  const r=document.createElement('script');
+  r.id='adherentsPageRestoreV1';
+  r.src='./adherents-page-restore-v1.js?v=1';
+  r.async=false;
+  document.head.appendChild(r);
+}
 function loadContactBridge(){
-  if(document.getElementById('adherentsContactMenuV2'))return;
+  if(document.getElementById('adherentsContactMenuV2')){loadPageRestore();return;}
   const c=document.createElement('script');
   c.id='adherentsContactMenuV2';
   c.src='./adherents-contact-menu-v2.js?v=1';
   c.async=false;
+  c.onload=loadPageRestore;
   document.head.appendChild(c);
 }
 if(window.HorticultureAdherents){loadContactBridge();return;}
