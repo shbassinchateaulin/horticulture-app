@@ -1,15 +1,6 @@
 (()=>{
 'use strict';
-function loadSortiesBridge(){
-  if(document.getElementById('sortiesModuleV1'))return;
-  const x=document.createElement('script');
-  x.id='sortiesModuleV1';
-  x.src='./sorties-v1.js?v=1';
-  x.async=false;
-  document.head.appendChild(x);
-}
 function loadPageRestore(){
-  loadSortiesBridge();
   if(document.getElementById('adherentsPageRestoreV1'))return;
   const r=document.createElement('script');
   r.id='adherentsPageRestoreV1';
@@ -26,7 +17,6 @@ function loadContactBridge(){
   c.onload=loadPageRestore;
   document.head.appendChild(c);
 }
-loadSortiesBridge();
 if(window.HorticultureAdherents){loadContactBridge();return;}
 const s=document.createElement('script');
 s.id='adherentsAdminRecoveredV2';
