@@ -17,10 +17,14 @@ Storage.prototype.removeItem=function(k){if(this===localStorage&&k===USERS_KEY&&
 setTimeout(()=>pull(true),250);setInterval(()=>pull(false),POLL_MS);window.addEventListener('focus',()=>pull(false));window.addEventListener('pageshow',()=>pull(false));document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false)});
 window.HorticultureSharedUsers={api:API,pull:()=>pull(false),async createUser(user){localWritePending++;try{return await request({action:'createUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async updateUser(user){localWritePending++;try{return await request({action:'updateUser',user})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}},async deleteUser(id){localWritePending++;try{return await request({action:'deleteUser',id})}finally{localWritePending=Math.max(0,localWritePending-1);pull(true)}}};
 if(!window.__horticultureAdherentsImportFetchBridge){window.__horticultureAdherentsImportFetchBridge=true;const nativeFetch=window.fetch.bind(window);window.fetch=(input,init={})=>{try{if(String(input)===API&&String(init.method||'GET').toUpperCase()==='POST'&&typeof init.body==='string'){const b=JSON.parse(init.body);if(b.action==='analyzeAdherentsImportAI'){b.action='importAdherentsAdmin';b.rows={_aiPayload:b.payload||{}};delete b.payload;init={...init,body:JSON.stringify(b)}}}}catch(_){}return nativeFetch(input,init)}}
-if(!document.getElementById('adherentsAdminV2')){const s=document.createElement('script');s.id='adherentsAdminV2';s.src='./adherents-admin-v2.js?v=3';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=2';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('adherentsRoutePersistV1')){const s=document.createElement('script');s.id='adherentsRoutePersistV1';s.src='./adherents-route-persist-v1.js?v=7';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('exclusiveNavigationV1')){const s=document.createElement('script');s.id='exclusiveNavigationV1';s.src='./navigation-exclusive-v1.js?v=4';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('drawerControllerV1')){const s=document.createElement('script');s.id='drawerControllerV1';s.src='./drawer-controller-v1.js?v=1';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('quickAddAdherentV1')){const s=document.createElement('script');s.id='quickAddAdherentV1';s.src='./quick-add-adherent-v1.js?v=1';s.async=true;document.head.appendChild(s)}
+function loadDynamicModules(){
+ if(!document.getElementById('adherentsAdminV2')){const s=document.createElement('script');s.id='adherentsAdminV2';s.src='./adherents-admin-v2.js?v=3';s.async=true;document.head.appendChild(s)}
+ if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=2';s.async=true;document.head.appendChild(s)}
+ if(!document.getElementById('adherentsRoutePersistV1')){const s=document.createElement('script');s.id='adherentsRoutePersistV1';s.src='./adherents-route-persist-v1.js?v=7';s.async=true;document.head.appendChild(s)}
+ if(!document.getElementById('exclusiveNavigationV1')){const s=document.createElement('script');s.id='exclusiveNavigationV1';s.src='./navigation-exclusive-v1.js?v=4';s.async=true;document.head.appendChild(s)}
+ if(!document.getElementById('quickAddAdherentV1')){const s=document.createElement('script');s.id='quickAddAdherentV1';s.src='./quick-add-adherent-v1.js?v=1';s.async=true;document.head.appendChild(s)}
+}
+if(!document.getElementById('drawerControllerV1')){
+ const s=document.createElement('script');s.id='drawerControllerV1';s.src='./drawer-controller-v1.js?v=2';s.async=false;s.onload=loadDynamicModules;document.head.appendChild(s)
+}else loadDynamicModules();
 })();
