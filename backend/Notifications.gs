@@ -59,7 +59,7 @@ function createNotification_(o){
   const targetPermissions=notifCsv_(o.targetPermissions);
   const data=o.data||{};
   notifSheet_().appendRow([id,String(o.type||'info'),String(o.title||'Notification'),String(o.message||''),targetUsers.join(','),targetPermissions.join(','),created,String(o.expiresAt||''),JSON.stringify(data)]);
-  const push=sendOneSignalPush_({id:id,type:String(o.type||'info'),title:String(o.title||'Notification'),message:String(o.message||''),targetUsers:targetUsers.join(','),targetPermissions:targetPermissions.join(','),data:data});
+  const push=o.push===false?{ok:true,skipped:true,reason:'Notification interne uniquement'}:sendOneSignalPush_({id:id,type:String(o.type||'info'),title:String(o.title||'Notification'),message:String(o.message||''),targetUsers:targetUsers.join(','),targetPermissions:targetPermissions.join(','),data:data});
   return{ok:true,id:id,createdAt:created,targetUsers:targetUsers,push:push};
 }
 function listNotificationsForUser_(userId){cleanupNotifications_();const u=notifUser_(userId);if(!u)return{ok:false,error:'Utilisateur introuvable ou inactif'};const sh=notifSheet_(),rows=sh.getLastRow()<2?[]:sh.getDataRange().getValues().slice(1),readSh=notifReadSheet_(),reads=readSh.getLastRow()<2?[]:readSh.getDataRange().getValues().slice(1),readMap={};reads.forEach(r=>{if(String(r[1])===String(userId))readMap[String(r[0])]=String(r[2]||'')});const now=Date.now(),notifications=rows.filter(r=>r[0]).map(r=>({id:String(r[0]),type:String(r[1]||'info'),title:String(r[2]||''),message:String(r[3]||''),targetUsers:String(r[4]||''),targetPermissions:String(r[5]||''),createdAt:String(r[6]||''),expiresAt:String(r[7]||''),data:String(r[8]||'')})).filter(n=>(!n.expiresAt||Date.parse(n.expiresAt)>now)&&notificationVisibleForUser_(n,u)).map(n=>{let data={};try{data=JSON.parse(n.data||'{}')}catch{}return{id:n.id,type:n.type,title:n.title,message:n.message,createdAt:n.createdAt,data:data,read:!!readMap[n.id],readAt:readMap[n.id]||''}}).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));return{ok:true,notifications:notifications}}
@@ -72,6 +72,11 @@ function testerPushOneSignalSuperAdmin(){
   const u=listUsers_().find(x=>x.active&&(notifKey_(x.role).includes('superadmin')||notifKey_(x.function).includes('superadmin')||notifKey_(x.username)==='superadmin'));
   if(!u)return{ok:false,error:'Aucun compte Super Admin actif trouvé.'};
   return testerPushOneSignal_(u.id);
+}
+function testerNotificationAdhesionInterneSuperAdmin(){
+  const u=listUsers_().find(x=>x.active&&(notifKey_(x.role).includes('superadmin')||notifKey_(x.function).includes('superadmin')||notifKey_(x.username)==='superadmin'));
+  if(!u)return{ok:false,error:'Aucun compte Super Admin actif trouvé.'};
+  return createNotification_({push:false,type:'helloasso-membership',title:'Nouvelle adhésion HelloAsso',message:'TEST — Camille Jardin vient de rejoindre l’association.',targetUsers:[u.id],data:{view:'adherents',test:true,source:'internal-test'}});
 }
 function diagnosticOneSignal_(){return{ok:true,appId:ONESIGNAL_APP_ID,apiKeyConfigured:!!oneSignalApiKey_()}}
 function cleanupNotifications_(){
