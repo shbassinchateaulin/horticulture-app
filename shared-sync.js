@@ -19,4 +19,5 @@ window.HorticultureSharedUsers={api:API,pull:()=>pull(false),async createUser(us
 if(!window.__horticultureAdherentsImportFetchBridge){window.__horticultureAdherentsImportFetchBridge=true;const nativeFetch=window.fetch.bind(window);window.fetch=(input,init={})=>{try{if(String(input)===API&&String(init.method||'GET').toUpperCase()==='POST'&&typeof init.body==='string'){const b=JSON.parse(init.body);if(b.action==='analyzeAdherentsImportAI'){b.action='importAdherentsAdmin';b.rows={_aiPayload:b.payload||{}};delete b.payload;init={...init,body:JSON.stringify(b)}}}}catch(_){}return nativeFetch(input,init)}}
 function loadScript(id,src){if(document.getElementById(id))return;const s=document.createElement('script');s.id=id;s.src=src;s.async=false;document.head.appendChild(s)}
 loadScript('adherentsAdminV1Stable','./adherents-admin-v1.js?v=2');
+loadScript('adherentsHomeReturnFix','./adherents-home-return-fix.js?v=1');
 })();
