@@ -1,13 +1,10 @@
 // SortiesRoutes.gs — aide d’intégration pour Code.gs
 // Ces fonctions n'ajoutent pas un second doGet/doPost : elles regroupent seulement les routes Sorties.
-// Dans Code.gs, doGet doit appeler sortiesRouteGet_(a) avant "Action inconnue".
-// Dans Code.gs, doPost doit appeler sortiesRoutePost_(b) avant "Action inconnue".
-
-function sortiesRouteGet_(a){
+function sortiesRouteGet_(a,params){
   if(a==='listSortiesAdmin')return sortiesAdminList_();
+  if(a==='listSortieAttendance')return sortiesAttendanceList_(params&&params.sortieId||'');
   return null;
 }
-
 function sortiesRoutePost_(b){
   if(b.action==='syncSortiesHelloAsso')return sortiesAdminSync_();
   if(b.action==='saveSortieAdmin')return sortiesAdminSave_(b.sortie||{});
@@ -15,5 +12,7 @@ function sortiesRoutePost_(b){
   if(b.action==='saveSortieParticipant')return sortiesAdminSaveParticipant_(b.participant||{});
   if(b.action==='deleteSortieParticipant')return sortiesAdminDeleteParticipant_(b.id||'');
   if(b.action==='checkSortieTicket')return sortiesAdminCheckTicket_(b.sortieId||'',b.code||'');
+  if(b.action==='setSortieAttendance')return sortiesAttendanceSet_(b.sortieId||'',b.participantId||'',b.status||'pending');
+  if(b.action==='importSortieParticipantsAI')return sortiesImportAiSave_(b.sortieId||'',b.payload||{});
   return null;
 }
