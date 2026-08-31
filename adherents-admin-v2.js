@@ -2,11 +2,23 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
-  const x=document.createElement('script');
-  x.id='sortiesSafeV1';
-  x.src='./sorties-safe-v1.js?v=1';
-  x.async=false;
-  document.head.appendChild(x);
+  const startUi=()=>{
+    if(document.getElementById('sortiesSafeV1'))return;
+    const x=document.createElement('script');
+    x.id='sortiesSafeV1';
+    x.src='./sorties-safe-v1.js?v=2';
+    x.async=false;
+    document.head.appendChild(x);
+  };
+  if(window.HorticultureSortiesSharedReady){Promise.resolve(window.HorticultureSortiesSharedReady).finally(startUi);return;}
+  if(document.getElementById('sortiesSharedBridgeV1')){setTimeout(startUi,800);return;}
+  const b=document.createElement('script');
+  b.id='sortiesSharedBridgeV1';
+  b.src='./sorties-shared-bridge-v1.js?v=1';
+  b.async=false;
+  b.onload=()=>Promise.resolve(window.HorticultureSortiesSharedReady).finally(startUi);
+  b.onerror=startUi;
+  document.head.appendChild(b);
 }
 function loadPageRestore(){
   if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}
