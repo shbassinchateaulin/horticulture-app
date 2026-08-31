@@ -8,7 +8,6 @@ let repairing=false;
 const STORE='horticulture-active-view-v1';
 
 function appShell(){return document.getElementById('appShell')}
-function main(){return document.querySelector('#appShell main.app')||document.querySelector('main.app')}
 function drawer(){return document.getElementById('drawer')}
 function home(){return document.getElementById('home')}
 function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
@@ -16,6 +15,7 @@ function uniq(a){return [...new Set(a.filter(Boolean))]}
 function views(){return uniq([...document.querySelectorAll('#appShell .view')])}
 function setStore(v){try{v&&v!=='home'?sessionStorage.setItem(STORE,v):sessionStorage.removeItem(STORE)}catch(_){}}
 function getStore(){try{return sessionStorage.getItem(STORE)||''}catch(_){return''}}
+function isInsideModuleContent(el){return !!el?.closest?.('#adherentsAdmin,.aa-modalBack,.aa-ir-back')&&!el.closest?.('#drawer,.bottom,.top')}
 
 function routeCandidates(route){
  const r=norm(route).replace(/[^a-z0-9]+/g,'');
@@ -63,6 +63,16 @@ function openAdherents(){
  if(api&&typeof api.open==='function')api.open();
  setTimeout(()=>{const a=document.getElementById('adherentsAdmin');if(a)showOnly(a,'adherents');closeDrawer();window.scrollTo(0,0)},0);
 }
+function openAdherentForm(){
+ openAdherents();
+ let tries=0;
+ const timer=setInterval(()=>{
+  tries++;
+  const add=document.querySelector('#adherentsAdmin [data-add]:not([disabled])');
+  if(add){clearInterval(timer);add.click()}
+  if(tries>80)clearInterval(timer);
+ },75);
+}
 function openRoute(route){
  const r=norm(route);
  if(!r||r==='home'||r==='accueil')return openHome(),true;
@@ -88,6 +98,7 @@ function routeFromButton(el){
  if(t.includes('verifier'))return'check';
  return null;
 }
+function isQuickAdd(el){const b=el?.closest?.('button');const t=norm(b?.textContent);return !!b?.closest?.('.quickGrid')&&t.includes('ajouter')&&t.includes('adherent')}
 function isMenuButton(el){const b=el?.closest?.('#menu,.menuBtn,[data-menu]');return !!b&&!!b.closest?.('#appShell')}
 function isHomeLogo(el){
  if(el?.closest?.('.admBrand'))return true;
@@ -126,6 +137,8 @@ document.addEventListener('click',e=>{
  if(isMenuButton(e.target)){e.preventDefault();e.stopImmediatePropagation();toggleDrawer();return}
  if(d&&e.target===d){e.preventDefault();e.stopImmediatePropagation();closeDrawer();return}
  if(isHomeLogo(e.target)){e.preventDefault();e.stopImmediatePropagation();openHome();return}
+ if(isQuickAdd(e.target)){e.preventDefault();e.stopImmediatePropagation();openAdherentForm();return}
+ if(isInsideModuleContent(e.target)){scheduleRepair();return}
  const route=routeFromButton(e.target);
  if(!route){scheduleRepair();return}
  const insideDrawer=!!e.target.closest?.('#drawer');
@@ -147,5 +160,5 @@ document.head.appendChild(style);
 function boot(){markDrawerButtons();repair();const s=appShell();if(!s){setTimeout(boot,100);return}new MutationObserver(scheduleRepair).observe(s,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',scheduleRepair);window.addEventListener('focus',scheduleRepair);
-window.HorticultureNavigation={openHome,openAdherents,openRoute,repair,closeDrawer,openDrawer};
+window.HorticultureNavigation={openHome,openAdherents,openAdherentForm,openRoute,repair,closeDrawer,openDrawer};
 })();
