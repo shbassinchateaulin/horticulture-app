@@ -33,8 +33,8 @@ function helloAssoGet_(path,params){
   return j;
 }
 function helloAssoSeasonStart_(){
-  const now=new Date(),y=now.getFullYear(),m=now.getMonth(),start=m>=8?y:y-1;
-  return new Date(start,8,1,0,0,0,0).toISOString();
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth(),start=m>=10?y:y-1;
+  return new Date(start,10,1,0,0,0,0).toISOString();
 }
 function helloAssoNorm_(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
 function helloAssoCustomMap_(item){
@@ -55,13 +55,33 @@ function helloAssoNotes_(order,item,detail,map){
   return bits.join(' | ');
 }
 function helloAssoOrderItems_(order){return (order&&order.items||[]).filter(i=>helloAssoNorm_(i.type)==='membership'&&helloAssoNorm_(i.state)!=='canceled'&&helloAssoNorm_(i.state)!=='refunded')}
+function helloAssoSeasonFromText_(text){
+  text=String(text||'');
+  const m=text.match(/\b(20\d{2})\s*[-–—\/]\s*(20\d{2})\b/);
+  if(!m)return'';
+  const a=Number(m[1]),b=Number(m[2]);
+  return b===a+1?String(a)+'-'+String(b):'';
+}
+function helloAssoSeasonFor_(order,item,detail){
+  // Priorité à la saison explicitement indiquée par la campagne HelloAsso.
+  // Cela permet une inscription anticipée à 2026-2027 avant le 1er novembre 2026.
+  const candidates=[
+    order&&order.formName,order&&order.formSlug,order&&order.name,
+    detail&&detail.formName,detail&&detail.formSlug,detail&&detail.name,
+    item&&item.name
+  ];
+  for(let i=0;i<candidates.length;i++){
+    const s=helloAssoSeasonFromText_(candidates[i]);if(s)return s;
+  }
+  return adherentsAdminSeason_();
+}
 function helloAssoBuildAdherent_(order,item,detail){
   detail=detail||{};const payer=order.payer||{},user=detail.user||item.user||{},map=helloAssoCustomMap_(detail);
   const firstName=String(user.firstName||payer.firstName||helloAssoFindField_(map,['prenom','prénom','firstname'])||'').trim();
   const lastName=String(user.lastName||payer.lastName||helloAssoFindField_(map,['nom','lastname'])||'').trim();
   const email=String(user.email||payer.email||helloAssoFindField_(map,['email','e-mail','mail'])||'').trim().toLowerCase();
   const date=String(order.date||detail.date||new Date().toISOString()).slice(0,10);
-  return{firstName:firstName,lastName:lastName,email:email,phone:helloAssoPhone_(payer,map),address:helloAssoAddress_(payer,map),status:'Adhérent',source:'HelloAsso',dateAdhesion:date,season:adherentsAdminSeason_(),active:true,helloassoId:String(item.id||''),notes:helloAssoNotes_(order,item,detail,map)};
+  return{firstName:firstName,lastName:lastName,email:email,phone:helloAssoPhone_(payer,map),address:helloAssoAddress_(payer,map),status:'Adhérent',source:'HelloAsso',dateAdhesion:date,season:helloAssoSeasonFor_(order,item,detail),active:true,helloassoId:String(item.id||''),notes:helloAssoNotes_(order,item,detail,map)};
 }
 function helloAssoNotifyCreated_(a,order,item){
   if(typeof createNotification_!=='function')return null;
