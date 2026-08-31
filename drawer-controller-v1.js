@@ -2,16 +2,72 @@
 'use strict';
 if(window.__horticultureDrawerControllerV1)return;
 window.__horticultureDrawerControllerV1=true;
-let lockUntil=0;
+
 const drawer=()=>document.getElementById('drawer');
-function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
-function forceOpen(){const d=drawer();if(!d)return;lockUntil=Date.now()+500;d.classList.add('open');d.style.setProperty('display','block','important');setTimeout(()=>{if(Date.now()<lockUntil){d.classList.add('open');d.style.setProperty('display','block','important')}},30);setTimeout(()=>{if(Date.now()<lockUntil){d.classList.add('open');d.style.setProperty('display','block','important')}},120);setTimeout(()=>{if(d.classList.contains('open'))d.style.removeProperty('display')},550)}
-function close(){const d=drawer();if(!d)return;lockUntil=0;d.classList.remove('open');d.style.removeProperty('display')}
-function openAdherents(){close();const nav=window.HorticultureNavigation;if(nav?.openAdherents){nav.openAdherents();return}const fn=window.HorticultureAdherents?.open;if(typeof fn==='function')fn()}
-function bindMenu(){const b=document.getElementById('menu');if(!b||b.dataset.drawerController==='1')return;b.dataset.drawerController='1';b.onclick=null;b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();forceOpen()},true)}
-function bindDrawer(){const d=drawer();if(!d)return;d.addEventListener('click',e=>{if(e.target===d&&Date.now()>=lockUntil)close()},true);const buttons=[...d.querySelectorAll('.dlist button')];for(const b of buttons){if(/adh[eé]rents/i.test(norm(b.textContent))){if(b.dataset.drawerAdherents==='1')continue;b.dataset.drawerAdherents='1';b.dataset.permission='adherents';b.onclick=null;b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openAdherents()},true)}}}
-function bind(){bindMenu();bindDrawer()}
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+
+function open(){const d=drawer();if(!d)return;d.classList.add('open');d.style.setProperty('display','block','important')}
+function close(){const d=drawer();if(!d)return;d.classList.remove('open');d.style.removeProperty('display')}
+function toggle(){const d=drawer();if(!d)return;d.classList.contains('open')?close():open()}
+
+function openAdherents(){
+  close();
+  const fn=window.HorticultureAdherents?.open;
+  if(typeof fn==='function'){fn();return true}
+  return false;
+}
+
+function clickMatchingHomeButton(source){
+  const permission=String(source.dataset?.permission||'').toLowerCase();
+  const label=norm(source.textContent);
+  const candidates=[...document.querySelectorAll('#home button,.dashTile,.space')];
+  let target=null;
+  if(permission)target=candidates.find(b=>String(b.dataset?.permission||'').toLowerCase()===permission);
+  if(!target)target=candidates.find(b=>norm(b.textContent).startsWith(label)||label.startsWith(norm(b.querySelector('b')?.textContent||'')));
+  if(!target){
+    const aliases={
+      'actualites':'communication','actualite':'communication','sorties':'sorties','adherents':'adherents',
+      'comptabilite':'comptabilite','suggestions':'suggestions','consultation ag':'ag','parametres':'parametres',
+      'mon profil':'profil','gestion des acces':'acces','acces':'acces'
+    };
+    const key=Object.keys(aliases).find(k=>label.includes(k));
+    if(key)target=candidates.find(b=>String(b.dataset?.permission||'').toLowerCase()===aliases[key]||norm(b.textContent).includes(key));
+  }
+  if(!target)return false;
+  close();
+  setTimeout(()=>target.click(),0);
+  return true;
+}
+
+function routeDrawerButton(btn){
+  const label=norm(btn.textContent);
+  if(/adh[eé]rent/.test(btn.textContent||'')||label.includes('adherent'))return openAdherents();
+  if(label.includes('accueil')){
+    close();
+    const brand=document.querySelector('.admBrand');
+    if(brand){setTimeout(()=>brand.click(),0);return true}
+    const homeBtn=document.querySelector('[data-go="home"]');
+    if(homeBtn){setTimeout(()=>homeBtn.click(),0);return true}
+  }
+  return clickMatchingHomeButton(btn);
+}
+
+// Un seul contrôleur, enregistré avant les modules dynamiques.
+document.addEventListener('click',e=>{
+  const menu=e.target.closest?.('#menu,.menuBtn');
+  if(menu&&menu.closest('#appShell')){
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();toggle();return;
+  }
+  const d=drawer();
+  if(!d)return;
+  if(e.target===d){e.preventDefault();e.stopImmediatePropagation();close();return}
+  const btn=e.target.closest?.('.dlist button');
+  if(btn&&d.contains(btn)){
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    if(!routeDrawerButton(btn))console.warn('Navigation latérale non reliée:',btn.textContent?.trim());
+  }
+},true);
+
 const style=document.createElement('style');style.id='drawer-controller-style-v1';style.textContent='#drawer.open{display:block!important}';document.head.appendChild(style);
-bind();new MutationObserver(bind).observe(document.getElementById('appShell')||document.body,{childList:true,subtree:true});
-window.HorticultureDrawer={open:forceOpen,close,openAdherents};
+window.HorticultureDrawer={open,close,toggle,openAdherents};
 })();
