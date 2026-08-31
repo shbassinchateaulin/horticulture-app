@@ -2,19 +2,28 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
+  const loadAutoUi=()=>{
+    if(document.getElementById('sortiesAutoUiV1'))return;
+    const a=document.createElement('script');
+    a.id='sortiesAutoUiV1';
+    a.src='./sorties-auto-ui-v1.js?v=1';
+    a.async=false;
+    document.head.appendChild(a);
+  };
   const startUi=()=>{
     if(document.getElementById('sortiesSafeV1'))return;
     const x=document.createElement('script');
     x.id='sortiesSafeV1';
     x.src='./sorties-safe-v1.js?v=2';
     x.async=false;
+    x.onload=loadAutoUi;
     document.head.appendChild(x);
   };
   if(window.HorticultureSortiesSharedReady){Promise.resolve(window.HorticultureSortiesSharedReady).finally(startUi);return;}
   if(document.getElementById('sortiesSharedBridgeV1')){setTimeout(startUi,800);return;}
   const b=document.createElement('script');
   b.id='sortiesSharedBridgeV1';
-  b.src='./sorties-shared-bridge-v1.js?v=1';
+  b.src='./sorties-shared-bridge-v1.js?v=2';
   b.async=false;
   b.onload=()=>Promise.resolve(window.HorticultureSortiesSharedReady).finally(startUi);
   b.onerror=startUi;
