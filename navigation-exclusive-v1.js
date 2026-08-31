@@ -7,6 +7,7 @@ const main=()=>document.querySelector('#appShell main.app');
 const views=()=>[...(main()?.querySelectorAll(':scope > .view')||[])];
 const adherents=()=>document.getElementById('adherentsAdmin');
 const home=()=>document.getElementById('home');
+const drawer=()=>document.getElementById('drawer');
 
 function showOnly(target){
   if(!target)return;
@@ -16,13 +17,21 @@ function showOnly(target){
   }else{
     document.querySelectorAll('#appShell .bottom .nav').forEach(n=>n.classList.remove('active'));
   }
-  document.getElementById('drawer')?.classList.remove('open');
+}
+
+function closeDrawer(){drawer()?.classList.remove('open')}
+function openDrawer(){
+  const d=drawer();
+  if(!d)return;
+  d.classList.add('open');
+  d.style.removeProperty('display');
 }
 
 function openHome(){
   try{sessionStorage.removeItem('horticulture-active-view-v1')}catch(_){ }
   document.querySelectorAll('.aa-modalBack,.aa-ir-back').forEach(x=>x.remove());
   showOnly(home());
+  closeDrawer();
   scrollTo(0,0);
 }
 
@@ -33,6 +42,7 @@ function openAdherents(){
   if(root){
     try{sessionStorage.setItem('horticulture-active-view-v1','adherents')}catch(_){ }
     showOnly(root);
+    closeDrawer();
     scrollTo(0,0);
   }
 }
@@ -41,7 +51,7 @@ function isAdherentsButton(el){
   const b=el?.closest?.('[data-permission="adherents"],button');
   if(!b)return false;
   if(String(b.dataset?.permission||'').toLowerCase()==='adherents')return true;
-  return b.closest?.('.dlist') && /adh[eé]rents/i.test(b.textContent||'');
+  return !!b.closest?.('.dlist') && /adh[eé]rents/i.test(b.textContent||'');
 }
 
 function isHomeLogo(el){
@@ -52,8 +62,29 @@ function isHomeLogo(el){
   return /logo-admin/i.test(img.getAttribute('src')||'');
 }
 
-// Capture avant les anciens gestionnaires : une vue ne peut jamais rester empilée sur une autre.
+function isMenuButton(el){
+  const b=el?.closest?.('#menu,.menuBtn');
+  return !!b && !!b.closest?.('#appShell');
+}
+
+function wireDrawerAdherents(){
+  const d=drawer();
+  if(!d)return;
+  const btn=[...d.querySelectorAll('.dlist button')].find(b=>/adh[eé]rents/i.test(b.textContent||''));
+  if(!btn)return;
+  btn.dataset.permission='adherents';
+  btn.dataset.module='adherents';
+}
+
+// Gestion centralisée du menu et de la navigation Adhérents.
 document.addEventListener('click',e=>{
+  if(isMenuButton(e.target)){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const d=drawer();
+    if(d?.classList.contains('open'))closeDrawer();else openDrawer();
+    return;
+  }
   if(isHomeLogo(e.target)){
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -67,18 +98,18 @@ document.addEventListener('click',e=>{
     return;
   }
   const go=e.target.closest?.('[data-go]');
-  if(go && go.dataset.go==='home'){
-    queueMicrotask(openHome);
-  }
+  if(go && go.dataset.go==='home')queueMicrotask(openHome);
+  const d=drawer();
+  if(d && e.target===d)closeDrawer();
 },true);
 
-// Barrière CSS + réparation DOM : même si un ancien script remet deux .active, on corrige immédiatement.
 const style=document.createElement('style');
 style.id='exclusive-navigation-style-v1';
-style.textContent=`#appShell main.app:has(> #adherentsAdmin.active) > .view:not(#adherentsAdmin){display:none!important}#appShell main.app:has(> #home.active) > #adherentsAdmin{display:none!important}`;
+style.textContent=`#appShell main.app:has(> #adherentsAdmin.active) > .view:not(#adherentsAdmin){display:none!important}#appShell main.app:has(> #home.active) > #adherentsAdmin{display:none!important}#drawer.open{display:block!important}`;
 document.head.appendChild(style);
 
 function repair(){
+  wireDrawerAdherents();
   const a=adherents(),h=home();
   if(!a||!h)return;
   if(a.classList.contains('active')&&h.classList.contains('active')){
@@ -92,6 +123,8 @@ function observe(){
   if(!m){setTimeout(observe,100);return}
   new MutationObserver(repair).observe(m,{subtree:false,attributes:true,attributeFilter:['class']});
   new MutationObserver(repair).observe(m,{childList:true,subtree:false});
+  const d=drawer();
+  if(d)new MutationObserver(wireDrawerAdherents).observe(d,{childList:true,subtree:true});
   repair();
 }
 observe();
