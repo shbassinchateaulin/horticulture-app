@@ -2,12 +2,18 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
+  const loadEnhancements=()=>{
+    if(document.getElementById('sortiesEnhancementsV1'))return;
+    const e=document.createElement('script');e.id='sortiesEnhancementsV1';e.src='./sorties-enhancements-v1.js?v=1';e.async=false;document.head.appendChild(e);
+  };
   const loadAutoUi=()=>{
-    if(document.getElementById('sortiesAutoUiV1'))return;
+    if(document.getElementById('sortiesAutoUiV1')){loadEnhancements();return;}
     const a=document.createElement('script');
     a.id='sortiesAutoUiV1';
     a.src='./sorties-auto-ui-v1.js?v=1';
     a.async=false;
+    a.onload=loadEnhancements;
+    a.onerror=loadEnhancements;
     document.head.appendChild(a);
   };
   const startUi=()=>{
