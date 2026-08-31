@@ -64,13 +64,13 @@ function sendIntegratedMessage_(o) {
   const html = '<div style="background:#f4f7f5;padding:28px 12px;font-family:Arial,sans-serif;color:#173126"><div style="max-width:640px;margin:auto;background:#fff;border:1px solid #dfe8e2;border-radius:18px;overflow:hidden"><div style="background:#07583f;color:white;padding:20px 24px"><div style="font-size:19px;font-weight:700">Société d’Horticulture et d’Art Floral</div><div style="font-size:12px;opacity:.85;margin-top:3px">du Bassin de Châteaulin</div></div><div style="padding:24px;font-size:14px;line-height:1.6"><p>'+hello+'</p><p>'+messagerieEsc_(intro)+'</p>'+contextHtml+'<div style="margin:20px 0;padding:18px;background:#fafcfb;border:1px solid #e4ebe7;border-radius:12px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#78877f;font-weight:700;margin-bottom:8px">Message de notre équipe</div>'+bodyHtml+'</div><p style="margin-top:24px">Cordialement,<br><strong>'+messagerieEsc_(MESSAGERIE_SENDER_NAME)+'</strong></p></div></div></div>';
   const plain = (recipientName ? 'Bonjour '+recipientName+',' : 'Bonjour,')+'\n\n'+intro+(contextLabel?'\n\nVotre suggestion : '+contextLabel:'')+'\n\nMessage de notre équipe :\n'+message+'\n\nCordialement,\n'+MESSAGERIE_SENDER_NAME;
 
-  const options = {name:MESSAGERIE_SENDER_NAME,htmlBody:html};
-  const alias = String(PropertiesService.getScriptProperties().getProperty('MESSAGERIE_FROM_ALIAS') || '').trim();
-  if (alias) {
-    const aliases = GmailApp.getAliases().map(String);
-    if (aliases.indexOf(alias) >= 0) options.from = alias;
-  }
-  GmailApp.sendEmail(to, subject, plain, options);
+  MailApp.sendEmail({
+    to:to,
+    subject:subject,
+    body:plain,
+    htmlBody:html,
+    name:MESSAGERIE_SENDER_NAME
+  });
 
   const id = Utilities.getUuid(), now = new Date();
   messagerieHistorySheet_().appendRow([id,now,userId,userName,context,reference,to,recipientName,subject,message,'Envoyé']);
