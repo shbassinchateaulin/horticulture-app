@@ -21,4 +21,5 @@ if(!document.getElementById('adherentsAdminV2')){const s=document.createElement(
 if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=2';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('adherentsRoutePersistV1')){const s=document.createElement('script');s.id='adherentsRoutePersistV1';s.src='./adherents-route-persist-v1.js?v=7';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('exclusiveNavigationV1')){const s=document.createElement('script');s.id='exclusiveNavigationV1';s.src='./navigation-exclusive-v1.js?v=2';s.async=true;document.head.appendChild(s)}
+if(!document.getElementById('quickAddAdherentV1')){const s=document.createElement('script');s.id='quickAddAdherentV1';s.src='./quick-add-adherent-v1.js?v=1';s.async=true;document.head.appendChild(s)}
 })();
