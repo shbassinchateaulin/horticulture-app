@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__horticultureSortiesSharedBridgeV2)return;
-window.__horticultureSortiesSharedBridgeV2=true;
+if(window.__horticultureSortiesSharedBridgeV3)return;
+window.__horticultureSortiesSharedBridgeV3=true;
 const API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
 const STORE='horticulture-sorties-safe-v2',CACHE='horticulture-sorties-attendance-cache';
 let remoteSnapshot=[];
@@ -9,6 +9,7 @@ let applyingRemote=false;
 let flushTimer=null;
 let refreshing=false;
 let attendanceSending=new Map();
+let fastTimer=null;
 const originalSetItem=Storage.prototype.setItem;
 const originalRemoveItem=Storage.prototype.removeItem;
 const post=async(action,payload={})=>{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...payload})});const j=await r.json();if(!r.ok)throw new Error(j?.error||('HTTP '+r.status));return j};
@@ -17,8 +18,17 @@ function ids(rows,key='id'){return new Set((rows||[]).map(x=>String(x[key]||''))
 function validStatus(s){return ['pending','present','late','absent'].includes(String(s||''))}
 function statusOf(p){if(validStatus(p?.attendanceStatus))return p.attendanceStatus;return p?.present===true?'present':'pending'}
 function writeCache(rows){let c={};try{c=JSON.parse(localStorage.getItem(CACHE)||'{}')||{}}catch(_){}for(const s of rows||[]){const sid=String(s.id);c[sid]=c[sid]&&typeof c[sid]==='object'?c[sid]:{};(s.participants||[]).forEach(p=>{if(p?.id!=null&&validStatus(p.attendanceStatus))c[sid][p.id]=p.attendanceStatus})}try{originalSetItem.call(localStorage,CACHE,JSON.stringify(c))}catch(_){}}
-async function enrichAttendance(j){if(!j?.ok||!Array.isArray(j.sorties))return j;await Promise.all(j.sorties.map(async s=>{try{const a=await get('listSortieAttendance',{sortieId:s.id});const m=new Map((a?.attendance||[]).map(x=>[String(x.participantId),String(x.status||'pending')]));(s.participants||[]).forEach(p=>{const st=m.get(String(p.id));if(validStatus(st)){p.attendanceStatus=st;p.present=st==='present'||st==='late';if(!p.present)p.presentAt=''}else if(!validStatus(p.attendanceStatus))p.attendanceStatus=p.present?'present':'pending'})}catch(_){(s.participants||[]).forEach(p=>{if(!validStatus(p.attendanceStatus))p.attendanceStatus=p.present?'present':'pending'})}}));return j}
-function applyRemote(j){if(!j||!j.ok||!Array.isArray(j.sorties))return false;remoteSnapshot=j.sorties;writeCache(j.sorties);applyingRemote=true;originalSetItem.call(localStorage,STORE,JSON.stringify(j.sorties));applyingRemote=false;window.HorticultureSortiesSharedInfo={connected:true,lastHelloAssoSync:j.lastHelloAssoSync||''};window.dispatchEvent(new CustomEvent('horticulture-sorties-shared-updated',{detail:j}));document.dispatchEvent(new CustomEvent('horticulture-sorties-attendance-changed'));return true}
+async function enrichAttendance(j){
+  if(!j?.ok||!Array.isArray(j.sorties))return j;
+  try{
+    const a=await get('listSortieAttendance');
+    const bySortie=new Map();
+    for(const x of a?.attendance||[]){const sid=String(x.sortieId||''),pid=String(x.participantId||'');if(!bySortie.has(sid))bySortie.set(sid,new Map());bySortie.get(sid).set(pid,String(x.status||'pending'))}
+    for(const s of j.sorties){const m=bySortie.get(String(s.id))||new Map();for(const p of s.participants||[]){const st=m.get(String(p.id));if(validStatus(st)){p.attendanceStatus=st;p.present=st==='present'||st==='late';if(!p.present)p.presentAt=''}else if(!validStatus(p.attendanceStatus))p.attendanceStatus=p.present?'present':'pending'}}
+  }catch(_){for(const s of j.sorties)for(const p of s.participants||[])if(!validStatus(p.attendanceStatus))p.attendanceStatus=p.present?'present':'pending'}
+  return j
+}
+function applyRemote(j){if(!j||!j.ok||!Array.isArray(j.sorties))return false;remoteSnapshot=j.sorties;writeCache(j.sorties);applyingRemote=true;originalSetItem.call(localStorage,STORE,JSON.stringify(j.sorties));applyingRemote=false;window.HorticultureSortiesSharedInfo={connected:true,lastHelloAssoSync:j.lastHelloAssoSync||''};window.dispatchEvent(new CustomEvent('horticulture-sorties-shared-updated',{detail:j}));document.dispatchEvent(new CustomEvent('horticulture-sorties-attendance-changed'));window.HorticultureSorties?.refresh?.();return true}
 async function refresh(){if(refreshing)return null;refreshing=true;try{let j=await get('listSortiesAdmin');j=await enrichAttendance(j);if(applyRemote(j))return j;return j}catch(e){window.HorticultureSortiesSharedInfo={connected:false,lastHelloAssoSync:''};return null}finally{refreshing=false}}
 async function setAttendance(sortieId,participantId,status){status=validStatus(status)?status:'pending';const key=String(sortieId)+'::'+String(participantId),seq=(attendanceSending.get(key)||0)+1;attendanceSending.set(key,seq);try{const j=await post('setSortieAttendance',{sortieId,participantId,status});if(attendanceSending.get(key)!==seq)return j;if(!j?.ok)throw new Error(j?.error||'Synchronisation du statut impossible');return j}finally{if(attendanceSending.get(key)===seq)attendanceSending.delete(key)}}
 async function flush(local){
@@ -46,13 +56,17 @@ async function flush(local){
     await refresh();
   }catch(e){console.warn('[Sorties] Sauvegarde commune non disponible :',e&&e.message||e)}
 }
-function queueFromString(value){if(applyingRemote)return;clearTimeout(flushTimer);flushTimer=setTimeout(()=>{try{flush(JSON.parse(value||'[]'))}catch(_){}},500)}
+function queueFromString(value){if(applyingRemote)return;clearTimeout(flushTimer);flushTimer=setTimeout(()=>{try{flush(JSON.parse(value||'[]'))}catch(_){}},350)}
 Storage.prototype.setItem=function(key,value){const out=originalSetItem.apply(this,arguments);if(this===localStorage&&key===STORE)queueFromString(value);return out};
 Storage.prototype.removeItem=function(key){const out=originalRemoveItem.apply(this,arguments);if(this===localStorage&&key===STORE)queueFromString('[]');return out};
 document.addEventListener('horticulture-sorties-attendance-changed',e=>{const d=e?.detail;if(!d||d.sortieId==null||d.participantId==null||!validStatus(d.status))return;setAttendance(d.sortieId,d.participantId,d.status).catch(err=>console.warn('[Sorties] Synchronisation présence en attente :',err&&err.message||err))});
+function sortiesVisible(){const v=document.getElementById('sortiesAdmin');return document.visibilityState==='visible'&&!!v&&v.offsetParent!==null}
+function tick(){if(sortiesVisible())refresh()}
+function startFast(){if(fastTimer)clearInterval(fastTimer);fastTimer=setInterval(tick,3000)}
 window.HorticultureSortiesSharedReady=(async()=>{const j=await refresh();if(j)return true;console.warn('[Sorties] Base commune non encore disponible');return false})();
 window.HorticultureSortiesShared={refresh,setAttendance};
-setInterval(()=>{if(document.visibilityState==='visible')refresh()},30000);
+startFast();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
 window.addEventListener('focus',()=>refresh());
+document.addEventListener('click',e=>{if(e.target.closest?.('[data-permission="sorties"], [data-go="sorties"], [data-go="check"]'))setTimeout(refresh,80)},true);
 })();
