@@ -1,32 +1,15 @@
 (()=>{
 'use strict';
-if(window.__horticultureQuickAddAdherentV1)return;
-window.__horticultureQuickAddAdherentV1=true;
-
+if(window.__horticultureQuickAddAdherentV2)return;
+window.__horticultureQuickAddAdherentV2=true;
+const API=window.HorticultureSharedUsers?.api||'https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
-function isQuickAdd(btn){return !!btn?.closest?.('.quickGrid') && norm(btn.textContent)==='ajouter un adherent'}
-function clickAddWhenReady(){
-  let tries=0;
-  const t=setInterval(()=>{
-    tries++;
-    const root=document.getElementById('adherentsAdmin');
-    const add=root?.querySelector('[data-add]:not([disabled])');
-    if(add){clearInterval(t);add.click();return}
-    if(tries>80)clearInterval(t);
-  },75);
-}
-function openForm(){
-  try{sessionStorage.setItem('horticulture-active-view-v1','adherents')}catch(_){ }
-  const api=window.HorticultureAdherents;
-  if(api&&typeof api.open==='function')api.open();
-  clickAddWhenReady();
-}
-
-document.addEventListener('click',e=>{
-  const btn=e.target.closest?.('button');
-  if(!isQuickAdd(btn))return;
-  e.preventDefault();
-  e.stopImmediatePropagation();
-  openForm();
-},true);
+function season(){const d=new Date(),y=d.getFullYear(),m=d.getMonth();const start=m>=8?y:y-1;return `${start}-${start+1}`}
+function isQuickAdd(btn){return !!btn?.closest?.('.quickGrid')&&norm(btn.textContent)==='ajouter un adherent'}
+function ensureStyle(){if(document.getElementById('quickAddAdherentStyle'))return;const s=document.createElement('style');s.id='quickAddAdherentStyle';s.textContent=`.qaa-back{position:fixed;inset:0;z-index:1400;background:#0007;display:grid;place-items:center;padding:18px}.qaa-modal{width:min(680px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;box-shadow:0 20px 70px #0004}.qaa-modal h2{margin:0 0 6px;color:#17231d}.qaa-sub{color:#6d7b74;margin-bottom:18px}.qaa-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}.qaa-field.full{grid-column:1/-1}.qaa-field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.qaa-field input,.qaa-field select,.qaa-field textarea{width:100%;border:1px solid #dce4df;border-radius:11px;padding:12px;background:#fff}.qaa-field textarea{min-height:88px}.qaa-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.qaa-btn{height:46px;border:1px solid #dce4df;border-radius:12px;background:#fff;padding:0 15px;font-weight:750}.qaa-btn.green{background:#08744f;color:#fff;border-color:#08744f}.qaa-error{margin-top:10px;color:#b42318;font-size:12px;font-weight:700}@media(max-width:700px){.qaa-form{grid-template-columns:1fr}.qaa-field.full{grid-column:auto}.qaa-modal{padding:18px;border-radius:18px}.qaa-actions{display:grid;grid-template-columns:1fr 1fr}.qaa-btn{width:100%}}`;document.head.appendChild(s)}
+async function post(body){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});return r.json()}
+function openForm(){ensureStyle();document.querySelector('.qaa-back')?.remove();const sn=season(),back=document.createElement('div');back.className='qaa-back';back.innerHTML=`<div class="qaa-modal"><h2>Ajouter un adhérent</h2><div class="qaa-sub">Saison ${esc(sn)}</div><div class="qaa-form"><div class="qaa-field"><label>Prénom *</label><input data-f="firstName" autocomplete="given-name"></div><div class="qaa-field"><label>Nom *</label><input data-f="lastName" autocomplete="family-name"></div><div class="qaa-field full"><label>Adresse</label><input data-f="address" autocomplete="street-address"></div><div class="qaa-field"><label>Téléphone</label><input data-f="phone" inputmode="tel" autocomplete="tel"></div><div class="qaa-field"><label>E-mail</label><input data-f="email" type="email" autocomplete="email"></div><div class="qaa-field"><label>Origine</label><select data-f="source"><option selected>Manuel</option><option>HelloAsso</option></select></div><div class="qaa-field"><label>Date d’adhésion</label><input data-f="dateAdhesion" type="date" value="${new Date().toISOString().slice(0,10)}"></div><div class="qaa-field full"><label>Notes</label><textarea data-f="notes"></textarea></div></div><div class="qaa-error" hidden></div><div class="qaa-actions"><button class="qaa-btn" data-cancel>Annuler</button><button class="qaa-btn green" data-save>Enregistrer</button></div></div>`;document.body.appendChild(back);const modal=back.firstElementChild,save=modal.querySelector('[data-save]'),err=modal.querySelector('.qaa-error');back.addEventListener('click',e=>{if(e.target===back)back.remove()});modal.querySelector('[data-cancel]').onclick=()=>back.remove();save.onclick=async()=>{const data={source:'Manuel',season:sn,dateAdhesion:new Date().toISOString().slice(0,10),active:true};modal.querySelectorAll('[data-f]').forEach(i=>data[i.dataset.f]=i.value);if(!data.firstName.trim()||!data.lastName.trim()){err.hidden=false;err.textContent='Prénom et nom sont obligatoires.';return}save.disabled=true;save.textContent='Enregistrement…';err.hidden=true;try{const j=await post({action:'saveAdherentAdmin',adherent:data});if(!j.ok)throw Error(j.error||'Enregistrement impossible');back.remove();window.HorticultureAdherents?.refresh?.();const t=document.createElement('div');t.textContent='Adhérent enregistré';Object.assign(t.style,{position:'fixed',left:'50%',bottom:'80px',transform:'translateX(-50%)',background:'#173126',color:'#fff',padding:'11px 15px',borderRadius:'12px',zIndex:'1500',fontWeight:'700'});document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}catch(e){err.hidden=false;err.textContent=e.message||'Enregistrement impossible';save.disabled=false;save.textContent='Enregistrer'}};setTimeout(()=>modal.querySelector('[data-f="firstName"]')?.focus(),50)}
+document.addEventListener('click',e=>{const btn=e.target.closest?.('button');if(!isQuickAdd(btn))return;e.preventDefault();e.stopImmediatePropagation();openForm()},true);
+window.HorticultureQuickAddAdherent={open:openForm};
 })();
