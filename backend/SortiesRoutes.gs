@@ -7,7 +7,7 @@ function sortiesRouteGet_(a,params){
 }
 function sortiesRoutePost_(b){
   if(b.action==='syncSortiesHelloAsso')return sortiesAdminSync_();
-  if(b.action==='saveSortieAdmin')return sortiesAdminSave_(b.sortie||{});
+  if(b.action==='saveSortieAdmin')return sortiesAdminSaveAutoHelloAsso_(b.sortie||{});
   if(b.action==='deleteSortieAdmin')return sortiesAdminDelete_(b.id||'');
   if(b.action==='deleteSortieEverywhere')return sortiesDeleteEverywhere_(b.id||'');
   if(b.action==='saveSortieParticipant')return sortiesParticipantCapacitySave_(b.participant||{});
@@ -16,7 +16,7 @@ function sortiesRoutePost_(b){
   if(b.action==='setSortieAttendance')return sortiesAttendanceSet_(b.sortieId||'',b.participantId||'',b.status||'pending');
   if(b.action==='importSortieParticipantsAI')return sortiesImportAiSave_(b.sortieId||'',b.payload||{});
   if(b.action==='generateSortieDescriptionAI')return sortiesGenerateDescriptionAI_(b.sortie||{});
-  if(b.action==='createSortieHelloAsso')return sortiesCreateHelloAsso_(b.sortie||{});
+  if(b.action==='createSortieHelloAsso')return sortiesCreateHelloAssoSafe_(b.sortie||{});
   if(b.action==='syncSortieCapacity')return sortiesHelloAssoApplyRemaining_(b.sortieId||'');
   return null;
 }
