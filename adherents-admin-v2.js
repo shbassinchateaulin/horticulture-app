@@ -2,7 +2,8 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
-  const loadWizard=()=>{if(document.getElementById('sortiesCreateWizardV1'))return;const w=document.createElement('script');w.id='sortiesCreateWizardV1';w.src='./sorties-create-wizard-v1.js?v=3';w.async=false;document.head.appendChild(w)};
+  const loadFixes=()=>{if(document.getElementById('sortiesFixesV1'))return;const f=document.createElement('script');f.id='sortiesFixesV1';f.src='./sorties-fixes-v1.js?v=1';f.async=false;document.head.appendChild(f)};
+  const loadWizard=()=>{if(document.getElementById('sortiesCreateWizardV1')){loadFixes();return;}const w=document.createElement('script');w.id='sortiesCreateWizardV1';w.src='./sorties-create-wizard-v1.js?v=3';w.async=false;w.onload=loadFixes;w.onerror=loadFixes;document.head.appendChild(w)};
   const loadDetails=()=>{if(document.getElementById('sortiesDetailsPlusV1')){loadWizard();return;}const d=document.createElement('script');d.id='sortiesDetailsPlusV1';d.src='./sorties-details-plus-v1.js?v=4';d.async=false;d.onload=loadWizard;d.onerror=loadWizard;document.head.appendChild(d)};
   const loadSimpleUi=()=>{if(document.getElementById('sortiesUiSimpleV1')){loadDetails();return;}const u=document.createElement('script');u.id='sortiesUiSimpleV1';u.src='./sorties-ui-simple-v1.js?v=3';u.async=false;u.onload=loadDetails;u.onerror=loadDetails;document.head.appendChild(u)};
   const loadEnhancements=()=>{if(document.getElementById('sortiesEnhancementsV1')){loadSimpleUi();return;}const e=document.createElement('script');e.id='sortiesEnhancementsV1';e.src='./sorties-enhancements-v1.js?v=4';e.async=false;e.onload=loadSimpleUi;e.onerror=loadSimpleUi;document.head.appendChild(e)};
@@ -12,7 +13,7 @@ function loadSortiesSafe(){
   startUi();
   if(!document.getElementById('sortiesSharedBridgeV1')){const b=document.createElement('script');b.id='sortiesSharedBridgeV1';b.src='./sorties-shared-bridge-v1.js?v=3';b.async=true;document.head.appendChild(b)}
 }
-function loadPageRestore(){if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}const r=document.createElement('script');r.id='adherentsPageRestoreV1';r.src='./adherents-page-restore-v1.js?v=2';r.async=false;r.onload=loadSortiesSafe;document.head.appendChild(r)}
+function loadPageRestore(){if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}const r=document.createElement('script');r.id='adherentsPageRestoreV1';r.src='./adherents-page-restore-v1.js?v=3';r.async=false;r.onload=loadSortiesSafe;document.head.appendChild(r)}
 function loadContactBridge(){if(document.getElementById('adherentsContactMenuV2')){loadPageRestore();return;}const c=document.createElement('script');c.id='adherentsContactMenuV2';c.src='./adherents-contact-menu-v2.js?v=1';c.async=false;c.onload=loadPageRestore;document.head.appendChild(c)}
 if(window.HorticultureAdherents){loadContactBridge();return;}
 const s=document.createElement('script');s.id='adherentsAdminRecoveredV2';s.src='https://cdn.jsdelivr.net/gh/shbassinchateaulin/horticulture-app@cc767ff41cfc5c1006330ae6547926db93fdbb54/adherents-admin-v2.js?v=20260831';s.async=false;s.onload=loadContactBridge;s.onerror=()=>{console.error('Impossible de charger le module Adhérents de secours.');loadSortiesSafe();};document.head.appendChild(s);
