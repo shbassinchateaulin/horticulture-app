@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 function loadQuickAdd(){if(document.getElementById('quickAddAdherentV1'))return;const q=document.createElement('script');q.id='quickAddAdherentV1';q.src='./quick-add-adherent-v1.js?v=2';q.async=false;document.head.appendChild(q)}
-function loadQuickActions(){if(document.getElementById('quickActionsV1'))return;const q=document.createElement('script');q.id='quickActionsV1';q.src='./quick-actions-v1.js?v=2';q.async=false;document.head.appendChild(q)}
+function loadQuickActions(){if(document.getElementById('quickActionsV1'))return;const q=document.createElement('script');q.id='quickActionsV1';q.src='./quick-actions-v1.js?v=3';q.async=false;document.head.appendChild(q)}
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1')){loadQuickActions();return;}
   const loadPdfMobile=()=>{const loadBase=()=>{if(document.getElementById('sortiesPdfMobileV1')){loadQuickActions();return;}const p=document.createElement('script');p.id='sortiesPdfMobileV1';p.src='./sorties-pdf-mobile-v1.js?v=2';p.async=false;p.onload=loadQuickActions;p.onerror=loadQuickActions;document.head.appendChild(p)};if(document.getElementById('sortiesPdfIosFixV1')){loadBase();return;}const i=document.createElement('script');i.id='sortiesPdfIosFixV1';i.src='./sorties-pdf-ios-fix-v1.js?v=1';i.async=false;i.onload=loadBase;i.onerror=loadBase;document.head.appendChild(i)};
