@@ -9,6 +9,7 @@ function sortiesRoutePost_(b){
   if(b.action==='syncSortiesHelloAsso')return sortiesAdminSync_();
   if(b.action==='saveSortieAdmin')return sortiesAdminSave_(b.sortie||{});
   if(b.action==='deleteSortieAdmin')return sortiesAdminDelete_(b.id||'');
+  if(b.action==='deleteSortieEverywhere')return sortiesDeleteEverywhere_(b.id||'');
   if(b.action==='saveSortieParticipant')return sortiesParticipantCapacitySave_(b.participant||{});
   if(b.action==='deleteSortieParticipant')return sortiesParticipantCapacityDelete_(b.id||'');
   if(b.action==='checkSortieTicket')return sortiesAdminCheckTicket_(b.sortieId||'',b.code||'');
