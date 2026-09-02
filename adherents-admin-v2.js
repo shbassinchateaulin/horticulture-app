@@ -1,5 +1,6 @@
 (()=>{
 'use strict';
+function loadFooterFlow(){if(document.getElementById('dashboardFooterFlowV1'))return;const f=document.createElement('script');f.id='dashboardFooterFlowV1';f.src='./dashboard-footer-flow-v1.js?v=1';f.async=false;document.head.appendChild(f)}
 function loadQuickAdd(){if(document.getElementById('quickAddAdherentV1'))return;const q=document.createElement('script');q.id='quickAddAdherentV1';q.src='./quick-add-adherent-v1.js?v=2';q.async=false;document.head.appendChild(q)}
 function loadQuickActions(){if(document.getElementById('quickActionsV1'))return;const q=document.createElement('script');q.id='quickActionsV1';q.src='./quick-actions-v1.js?v=3';q.async=false;document.head.appendChild(q)}
 function loadSortiesSafe(){
@@ -20,6 +21,7 @@ function loadSortiesSafe(){
 }
 function loadPageRestore(){if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}const r=document.createElement('script');r.id='adherentsPageRestoreV1';r.src='./adherents-page-restore-v1.js?v=3';r.async=false;r.onload=loadSortiesSafe;document.head.appendChild(r)}
 function loadContactBridge(){if(document.getElementById('adherentsContactMenuV2')){loadPageRestore();return;}const c=document.createElement('script');c.id='adherentsContactMenuV2';c.src='./adherents-contact-menu-v2.js?v=1';c.async=false;c.onload=loadPageRestore;document.head.appendChild(c)}
+loadFooterFlow();
 loadQuickAdd();
 if(window.HorticultureAdherents){loadContactBridge();return;}
 const s=document.createElement('script');s.id='adherentsAdminRecoveredV2';s.src='https://cdn.jsdelivr.net/gh/shbassinchateaulin/horticulture-app@cc767ff41cfc5c1006330ae6547926db93fdbb54/adherents-admin-v2.js?v=20260831';s.async=false;s.onload=loadContactBridge;s.onerror=()=>{console.error('Impossible de charger le module Adhérents de secours.');loadSortiesSafe();};document.head.appendChild(s);
