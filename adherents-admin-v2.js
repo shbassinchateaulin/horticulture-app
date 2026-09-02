@@ -2,7 +2,8 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
-  const loadDetails=()=>{if(document.getElementById('sortiesDetailsPlusV1'))return;const d=document.createElement('script');d.id='sortiesDetailsPlusV1';d.src='./sorties-details-plus-v1.js?v=1';d.async=false;document.head.appendChild(d)};
+  const loadAttendance=()=>{if(document.getElementById('sortiesAttendanceFastV1'))return;const f=document.createElement('script');f.id='sortiesAttendanceFastV1';f.src='./sorties-attendance-fast-v1.js?v=1';f.async=false;document.head.appendChild(f)};
+  const loadDetails=()=>{if(document.getElementById('sortiesDetailsPlusV1')){loadAttendance();return;}const d=document.createElement('script');d.id='sortiesDetailsPlusV1';d.src='./sorties-details-plus-v1.js?v=1';d.async=false;d.onload=loadAttendance;d.onerror=loadAttendance;document.head.appendChild(d)};
   const loadSimpleUi=()=>{if(document.getElementById('sortiesUiSimpleV1')){loadDetails();return;}const u=document.createElement('script');u.id='sortiesUiSimpleV1';u.src='./sorties-ui-simple-v1.js?v=1';u.async=false;u.onload=loadDetails;u.onerror=loadDetails;document.head.appendChild(u)};
   const loadEnhancements=()=>{if(document.getElementById('sortiesEnhancementsV1')){loadSimpleUi();return;}const e=document.createElement('script');e.id='sortiesEnhancementsV1';e.src='./sorties-enhancements-v1.js?v=2';e.async=false;e.onload=loadSimpleUi;e.onerror=loadSimpleUi;document.head.appendChild(e)};
   const loadAutoUi=()=>{if(document.getElementById('sortiesAutoUiV1')){loadEnhancements();return;}const a=document.createElement('script');a.id='sortiesAutoUiV1';a.src='./sorties-auto-ui-v1.js?v=1';a.async=false;a.onload=loadEnhancements;a.onerror=loadEnhancements;document.head.appendChild(a)};
