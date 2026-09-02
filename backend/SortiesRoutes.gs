@@ -10,11 +10,12 @@ function sortiesRoutePost_(b){
   if(b.action==='saveSortieAdmin')return sortiesAdminSave_(b.sortie||{});
   if(b.action==='deleteSortieAdmin')return sortiesAdminDelete_(b.id||'');
   if(b.action==='saveSortieParticipant')return sortiesParticipantCapacitySave_(b.participant||{});
-  if(b.action==='deleteSortieParticipant')return sortiesAdminDeleteParticipant_(b.id||'');
+  if(b.action==='deleteSortieParticipant')return sortiesParticipantCapacityDelete_(b.id||'');
   if(b.action==='checkSortieTicket')return sortiesAdminCheckTicket_(b.sortieId||'',b.code||'');
   if(b.action==='setSortieAttendance')return sortiesAttendanceSet_(b.sortieId||'',b.participantId||'',b.status||'pending');
   if(b.action==='importSortieParticipantsAI')return sortiesImportAiSave_(b.sortieId||'',b.payload||{});
   if(b.action==='generateSortieDescriptionAI')return sortiesGenerateDescriptionAI_(b.sortie||{});
   if(b.action==='createSortieHelloAsso')return sortiesCreateHelloAsso_(b.sortie||{});
+  if(b.action==='syncSortieCapacity')return sortiesHelloAssoApplyRemaining_(b.sortieId||'');
   return null;
 }
