@@ -1,12 +1,13 @@
 (()=>{
 'use strict';
-if(window.__sortiesMobilePolishV3)return;window.__sortiesMobilePolishV3=true;
+if(window.__sortiesMobilePolishV4)return;window.__sortiesMobilePolishV4=true;
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
-let mobileQuery='';
+let searchQuery='';
 function isMobile(){return matchMedia('(max-width:700px)').matches}
 function css(){let st=$('#sortiesMobilePolishStyle');if(!st){st=document.createElement('style');st.id='sortiesMobilePolishStyle';document.head.appendChild(st)}st.textContent=`
 #sortiesAdmin .sfx-detailDelete{margin-left:auto!important;order:90!important}#sortiesAdmin .sfs-tools [data-scan]{order:91!important}
 [data-sfx-cleanmenu]{justify-content:flex-start!important;text-align:left!important;width:100%!important}[data-sfx-cleanmenu] .sfx-icon{margin-right:8px!important;flex:0 0 15px!important}
+#sortiesAdmin .sfx-moreInfo{display:none!important}
 @media(max-width:700px){
 #sortiesAdmin .sfs-tableWrap{overflow:visible!important;padding:0 10px 14px!important}
 #sortiesAdmin .sfs-table{display:block!important;width:100%!important;min-width:0!important;border-collapse:separate!important}
@@ -33,8 +34,8 @@ function css(){let st=$('#sortiesMobilePolishStyle');if(!st){st=document.createE
 function placeDetailDelete(){const root=$('#sortiesAdmin'),tools=$('.sfs-tools',root),del=$('[data-sfx-detail-delete]',root),scan=$('[data-scan]',root);if(!tools||!del)return;if(del.parentElement!==tools)tools.appendChild(del);del.style.marginLeft='auto';if(scan&&scan.parentElement===tools&&del.nextElementSibling!==scan)tools.insertBefore(del,scan)}
 function classify(label,i,td){const l=label.toLowerCase();if(i===0||/nom|prénom/.test(l))return'name';if(/téléphone|telephone|tel\b/.test(l))return'phone';if(/présence|presence|statut/.test(l))return'presence';if(/action|option|gestion/.test(l)||td.querySelector('button'))return'actions';return'secondary'}
 function optimizeParticipants(){const table=$('#sortiesAdmin .sfs-table');if(!table)return;const heads=$$('thead th',table).map(x=>(x.textContent||'').trim());$$('tbody tr',table).forEach(tr=>{$$('td',tr).forEach((td,i)=>{const label=heads[i]||'';td.dataset.mobileLabel=label||'Information';delete td.dataset.mobileName;delete td.dataset.mobilePhone;delete td.dataset.mobilePresence;delete td.dataset.mobileActions;delete td.dataset.mobileSecondary;const type=classify(label,i,td);if(type==='name'){td.dataset.mobileName='1';if(!$('.sfx-moreInfo',td)){const b=document.createElement('button');b.type='button';b.className='sfx-moreInfo';b.setAttribute('aria-label','Afficher plus d’informations');b.textContent='+';b.onclick=e=>{e.preventDefault();e.stopPropagation();const open=tr.classList.toggle('mobile-expanded');b.textContent=open?'−':'+';b.setAttribute('aria-label',open?'Masquer les informations':'Afficher plus d’informations')};td.appendChild(b)}}else if(type==='phone')td.dataset.mobilePhone='1';else if(type==='presence')td.dataset.mobilePresence='1';else if(type==='actions')td.dataset.mobileActions='1';else td.dataset.mobileSecondary='1'})});applySearch()}
-function applySearch(){if(!isMobile())return;const q=mobileQuery.trim().toLocaleLowerCase('fr');const table=$('#sortiesAdmin .sfs-table');if(!table)return;$$('tbody tr',table).forEach(tr=>{const txt=(tr.textContent||'').toLocaleLowerCase('fr');tr.style.display=!q||txt.includes(q)?'grid':'none'})}
-function installSearchFix(){const input=$('#sortiesAdmin .sfs-search');if(!input||input.dataset.mobileSearchFixed)return;input.dataset.mobileSearchFixed='1';input.addEventListener('input',e=>{if(!isMobile())return;e.stopImmediatePropagation();mobileQuery=input.value;applySearch()},true);input.addEventListener('search',e=>{if(!isMobile())return;e.stopImmediatePropagation();mobileQuery=input.value;applySearch()},true)}
+function applySearch(){const q=searchQuery.trim().toLocaleLowerCase('fr');const table=$('#sortiesAdmin .sfs-table');if(!table)return;$$('tbody tr',table).forEach(tr=>{const txt=(tr.textContent||'').toLocaleLowerCase('fr');const show=!q||txt.includes(q);tr.style.display=show?(isMobile()?'grid':''):'none'})}
+function installSearchFix(){const input=$('#sortiesAdmin .sfs-search');if(!input)return;if(input.dataset.searchFixedV4)return;input.dataset.searchFixedV4='1';if(searchQuery&&!input.value)input.value=searchQuery;const handle=e=>{e.stopImmediatePropagation();searchQuery=input.value;applySearch()};input.addEventListener('input',handle,true);input.addEventListener('search',handle,true);input.addEventListener('keyup',e=>{if(e.key==='Escape'){input.value='';searchQuery='';applySearch()}},true)}
 let pending=false;function run(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;css();placeDetailDelete();optimizeParticipants();installSearchFix()})}
-new MutationObserver(run).observe(document.body,{childList:true,subtree:true});document.addEventListener('click',()=>setTimeout(run,0),true);document.addEventListener('horticulture-sorties-shared-updated',run);addEventListener('resize',run);css();run();
+new MutationObserver(run).observe(document.body,{childList:true,subtree:true});document.addEventListener('click',()=>setTimeout(run,0),true);document.addEventListener('horticulture-sorties-shared-updated',run);addEventListener('resize',()=>{css();applySearch()});css();run();
 })();
