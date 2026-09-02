@@ -9,7 +9,7 @@ function loadSortiesSafe(){
   const loadEnhancements=()=>{if(document.getElementById('sortiesEnhancementsV1')){loadSimpleUi();return;}const e=document.createElement('script');e.id='sortiesEnhancementsV1';e.src='./sorties-enhancements-v1.js?v=2';e.async=false;e.onload=loadSimpleUi;e.onerror=loadSimpleUi;document.head.appendChild(e)};
   const loadAutoUi=()=>{if(document.getElementById('sortiesAutoUiV1')){loadEnhancements();return;}const a=document.createElement('script');a.id='sortiesAutoUiV1';a.src='./sorties-auto-ui-v1.js?v=1';a.async=false;a.onload=loadEnhancements;a.onerror=loadEnhancements;document.head.appendChild(a)};
   const startUi=()=>{if(document.getElementById('sortiesSafeV1'))return;const x=document.createElement('script');x.id='sortiesSafeV1';x.src='./sorties-safe-v1.js?v=3';x.async=false;x.onload=loadAutoUi;document.head.appendChild(x)};
-  if(!document.getElementById('sortiesQrPolyfillV1')){const q=document.createElement('script');q.id='sortiesQrPolyfillV1';q.src='./sorties-qr-polyfill-v1.js?v=1';q.async=true;document.head.appendChild(q)}
+  if(!document.getElementById('sortiesQrPolyfillV1')){const q=document.createElement('script');q.id='sortiesQrPolyfillV1';q.src='./sorties-qr-polyfill-v1.js?v=2';q.async=true;document.head.appendChild(q)}
   startUi();
   if(!document.getElementById('sortiesSharedBridgeV1')){const b=document.createElement('script');b.id='sortiesSharedBridgeV1';b.src='./sorties-shared-bridge-v1.js?v=2';b.async=true;document.head.appendChild(b)}
 }
