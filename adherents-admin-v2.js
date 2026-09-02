@@ -2,7 +2,8 @@
 'use strict';
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1'))return;
-  const loadFixes=()=>{if(document.getElementById('sortiesFixesV1'))return;const f=document.createElement('script');f.id='sortiesFixesV1';f.src='./sorties-fixes-v1.js?v=4';f.async=false;document.head.appendChild(f)};
+  const loadEditWizard=()=>{if(document.getElementById('sortiesEditWizardV1'))return;const e=document.createElement('script');e.id='sortiesEditWizardV1';e.src='./sorties-edit-wizard-v1.js?v=1';e.async=false;document.head.appendChild(e)};
+  const loadFixes=()=>{if(document.getElementById('sortiesFixesV1')){loadEditWizard();return;}const f=document.createElement('script');f.id='sortiesFixesV1';f.src='./sorties-fixes-v1.js?v=5';f.async=false;f.onload=loadEditWizard;f.onerror=loadEditWizard;document.head.appendChild(f)};
   const loadWizard=()=>{if(document.getElementById('sortiesCreateWizardV1')){loadFixes();return;}const w=document.createElement('script');w.id='sortiesCreateWizardV1';w.src='./sorties-create-wizard-v1.js?v=3';w.async=false;w.onload=loadFixes;w.onerror=loadFixes;document.head.appendChild(w)};
   const loadDetails=()=>{if(document.getElementById('sortiesDetailsPlusV1')){loadWizard();return;}const d=document.createElement('script');d.id='sortiesDetailsPlusV1';d.src='./sorties-details-plus-v1.js?v=4';d.async=false;d.onload=loadWizard;d.onerror=loadWizard;document.head.appendChild(d)};
   const loadSimpleUi=()=>{if(document.getElementById('sortiesUiSimpleV1')){loadDetails();return;}const u=document.createElement('script');u.id='sortiesUiSimpleV1';u.src='./sorties-ui-simple-v1.js?v=3';u.async=false;u.onload=loadDetails;u.onerror=loadDetails;document.head.appendChild(u)};
