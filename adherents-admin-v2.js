@@ -1,9 +1,10 @@
 (()=>{
 'use strict';
-function loadQuickActions(){if(document.getElementById('quickActionsV1'))return;const q=document.createElement('script');q.id='quickActionsV1';q.src='./quick-actions-v1.js?v=1';q.async=false;document.head.appendChild(q)}
+function loadQuickAdd(){if(document.getElementById('quickAddAdherentV1'))return;const q=document.createElement('script');q.id='quickAddAdherentV1';q.src='./quick-add-adherent-v1.js?v=2';q.async=false;document.head.appendChild(q)}
+function loadQuickActions(){if(document.getElementById('quickActionsV1'))return;const q=document.createElement('script');q.id='quickActionsV1';q.src='./quick-actions-v1.js?v=2';q.async=false;document.head.appendChild(q)}
 function loadSortiesSafe(){
   if(document.getElementById('sortiesSafeV1')){loadQuickActions();return;}
-  const loadPdfMobile=()=>{if(document.getElementById('sortiesPdfMobileV1')){loadQuickActions();return;}const p=document.createElement('script');p.id='sortiesPdfMobileV1';p.src='./sorties-pdf-mobile-v1.js?v=2';p.async=false;p.onload=loadQuickActions;p.onerror=loadQuickActions;document.head.appendChild(p)};
+  const loadPdfMobile=()=>{const loadBase=()=>{if(document.getElementById('sortiesPdfMobileV1')){loadQuickActions();return;}const p=document.createElement('script');p.id='sortiesPdfMobileV1';p.src='./sorties-pdf-mobile-v1.js?v=2';p.async=false;p.onload=loadQuickActions;p.onerror=loadQuickActions;document.head.appendChild(p)};if(document.getElementById('sortiesPdfIosFixV1')){loadBase();return;}const i=document.createElement('script');i.id='sortiesPdfIosFixV1';i.src='./sorties-pdf-ios-fix-v1.js?v=1';i.async=false;i.onload=loadBase;i.onerror=loadBase;document.head.appendChild(i)};
   const loadMobilePolish=()=>{if(document.getElementById('sortiesMobilePolishV1')){loadPdfMobile();return;}const m=document.createElement('script');m.id='sortiesMobilePolishV1';m.src='./sorties-mobile-polish-v1.js?v=4';m.async=false;m.onload=loadPdfMobile;m.onerror=loadPdfMobile;document.head.appendChild(m)};
   const loadEditWizard=()=>{if(document.getElementById('sortiesEditWizardV1')){loadMobilePolish();return;}const e=document.createElement('script');e.id='sortiesEditWizardV1';e.src='./sorties-edit-wizard-v1.js?v=1';e.async=false;e.onload=loadMobilePolish;e.onerror=loadMobilePolish;document.head.appendChild(e)};
   const loadFixes=()=>{if(document.getElementById('sortiesFixesV1')){loadEditWizard();return;}const f=document.createElement('script');f.id='sortiesFixesV1';f.src='./sorties-fixes-v1.js?v=5';f.async=false;f.onload=loadEditWizard;f.onerror=loadEditWizard;document.head.appendChild(f)};
@@ -19,6 +20,7 @@ function loadSortiesSafe(){
 }
 function loadPageRestore(){if(document.getElementById('adherentsPageRestoreV1')){loadSortiesSafe();return;}const r=document.createElement('script');r.id='adherentsPageRestoreV1';r.src='./adherents-page-restore-v1.js?v=3';r.async=false;r.onload=loadSortiesSafe;document.head.appendChild(r)}
 function loadContactBridge(){if(document.getElementById('adherentsContactMenuV2')){loadPageRestore();return;}const c=document.createElement('script');c.id='adherentsContactMenuV2';c.src='./adherents-contact-menu-v2.js?v=1';c.async=false;c.onload=loadPageRestore;document.head.appendChild(c)}
+loadQuickAdd();
 if(window.HorticultureAdherents){loadContactBridge();return;}
 const s=document.createElement('script');s.id='adherentsAdminRecoveredV2';s.src='https://cdn.jsdelivr.net/gh/shbassinchateaulin/horticulture-app@cc767ff41cfc5c1006330ae6547926db93fdbb54/adherents-admin-v2.js?v=20260831';s.async=false;s.onload=loadContactBridge;s.onerror=()=>{console.error('Impossible de charger le module Adhérents de secours.');loadSortiesSafe();};document.head.appendChild(s);
 })();
