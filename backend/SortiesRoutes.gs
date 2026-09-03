@@ -6,6 +6,7 @@ function sortiesRouteGet_(a,params){
   return null;
 }
 function sortiesRoutePost_(b){
+  const dr=typeof docsRoutePost_==='function'?docsRoutePost_(b):null;if(dr)return dr;
   if(b.action==='syncSortiesHelloAsso')return sortiesAdminSync_();
   if(b.action==='saveSortieAdmin')return sortiesAdminSaveAutoHelloAsso_(b.sortie||{});
   if(b.action==='deleteSortieAdmin')return sortiesAdminDelete_(b.id||'');
