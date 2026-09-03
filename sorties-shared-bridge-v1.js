@@ -1,12 +1,12 @@
 (()=>{
 'use strict';
-if(window.__horticultureSortiesSharedBridgeV4)return;
-window.__horticultureSortiesSharedBridgeV4=true;
+if(window.__horticultureSortiesSharedBridgeV5)return;
+window.__horticultureSortiesSharedBridgeV5=true;
 const API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
 const STORE='horticulture-sorties-safe-v2',CACHE='horticulture-sorties-attendance-cache';
 let remoteSnapshot=[],applyingRemote=false,flushTimer=null,refreshing=false,fastTimer=null;
 const attendanceSending=new Map(),originalSetItem=Storage.prototype.setItem,originalRemoveItem=Storage.prototype.removeItem;
-function loadPdfMapFix(){if(document.getElementById('sortiesPdfMapRouteFixV1'))return;const s=document.createElement('script');s.id='sortiesPdfMapRouteFixV1';s.src='./sorties-pdf-map-route-fix-v1.js?v=1';s.async=false;document.head.appendChild(s)}
+function loadPdfMapFix(){if(document.getElementById('sortiesPdfMapRouteFixV2'))return;const s=document.createElement('script');s.id='sortiesPdfMapRouteFixV2';s.src='./sorties-pdf-map-route-fix-v1.js?v=2';s.async=false;document.head.appendChild(s)}
 loadPdfMapFix();
 const post=async(action,payload={})=>{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...payload})});const j=await r.json();if(!r.ok)throw new Error(j?.error||('HTTP '+r.status));return j};
 const get=async(action,params={})=>{const u=new URL(API);u.searchParams.set('action',action);Object.entries(params).forEach(([k,v])=>v!=null&&u.searchParams.set(k,String(v)));const r=await fetch(u,{cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j?.error||('HTTP '+r.status));return j};
