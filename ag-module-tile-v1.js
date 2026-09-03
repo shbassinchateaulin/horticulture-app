@@ -2,6 +2,8 @@
 'use strict';
 const PERM='consultation_ag';
 const agIcon=`<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M8 12h3M8 16h3M14 8h2M14 12h2M14 16h2"/><path d="m8 8 .8.8L10.5 7"/></svg>`;
+function loadDocumentsCenter(){if(document.getElementById('documentsCenterV1'))return;const s=document.createElement('script');s.id='documentsCenterV1';s.src='./documents-center-v1.js?v=1';s.async=false;document.head.appendChild(s)}
+loadDocumentsCenter();
 function prepareAG(){const ag=document.getElementById('agConsultation');if(!ag)return null;ag.hidden=false;ag.style.removeProperty('display');ag.style.removeProperty('visibility');ag.style.removeProperty('opacity');ag.style.removeProperty('pointer-events');return ag}
 function open(){
  document.body.classList.remove('agWorkspaceMode');
