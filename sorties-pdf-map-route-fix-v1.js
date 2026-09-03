@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
 if(window.__sortiesPdfMapRouteFixV2)return;window.__sortiesPdfMapRouteFixV2=true;
+function loadPdfUiRestore(){if(document.getElementById('sortiesPdfUiRestoreV1'))return;const s=document.createElement('script');s.id='sortiesPdfUiRestoreV1';s.src='./sorties-pdf-ui-restore-v1.js?v=1';s.async=false;document.head.appendChild(s)}
+loadPdfUiRestore();
 const STORE='horticulture-sorties-safe-v2';
 const ORIGIN='Mairie de Châteaulin, 15 quai Jean Moulin, 29150 Châteaulin';
 const originalFetch=window.fetch.bind(window);
