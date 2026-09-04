@@ -1,13 +1,12 @@
 (()=>{
 'use strict';
-if(window.__agIosPrintV2)return;window.__agIosPrintV2=true;
+if(window.__agIosPrintV3)return;window.__agIosPrintV3=true;
 const STORE='horticulture-ag-pro-v2',ROUTE='horticulture-ag-route-v3';
-const mobile=()=>/iPhone|iPad|iPod/i.test(navigator.userAgent)||matchMedia('(max-width:900px)').matches||navigator.maxTouchPoints>1;
+const ios=()=>/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function route(){try{return JSON.parse(localStorage.getItem(ROUTE)||'null')}catch{return null}}
 function campaign(id){try{const raw=JSON.parse(localStorage.getItem(STORE)||'{"campaigns":[]}'),rows=Array.isArray(raw)?raw:(raw.campaigns||[]);return rows.find(c=>String(c?.id)===String(id))||null}catch{return null}}
 function kind(){return document.querySelector('#agConsultation .agTab.active')?.dataset.tab==='results'?'summary':'questionnaire'}
-function printable(c,k){if(k==='summary'&&window.HorticultureAGSynthesisPrint?.print){window.HorticultureAGSynthesisPrint.print(c);return true}if(k==='questionnaire'&&window.HorticultureAGQuestionnairePrint?.print){window.HorticultureAGQuestionnairePrint.print(c);return true}return false}
-function directPrint(c,k){const old=document.getElementById('agIosDirectPrint');old?.remove();const root=document.createElement('div');root.id='agIosDirectPrint';root.innerHTML=`<div class="agIosPrintCard"><b>${k==='summary'?'Synthèse du dépouillement':'Questionnaire complet'}</b><span>${String(c.title||'Consultation AG')}</span></div>`;document.body.appendChild(root);let st=document.getElementById('agIosDirectPrintStyle');if(!st){st=document.createElement('style');st.id='agIosDirectPrintStyle';st.textContent=`#agIosDirectPrint{display:none}@media print{body>*{display:none!important}#agIosDirectPrint{display:block!important;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;color:#173126;padding:12mm}.agIosPrintCard{border-bottom:2px solid #07583f;padding-bottom:5mm}.agIosPrintCard b{display:block;font-size:20pt}.agIosPrintCard span{display:block;margin-top:2mm;font-size:11pt;color:#607168}}`;document.head.appendChild(st)}setTimeout(()=>window.print(),30)}
-function run(c,k){try{if(printable(c,k))return;directPrint(c,k)}catch(err){console.error('AG print iOS',err);directPrint(c,k)}}
-document.addEventListener('click',e=>{if(!mobile())return;const b=e.target.closest?.('#agConsultation [data-print]');if(!b)return;const r=route(),c=r?.id?campaign(r.id):null;if(!c)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();run(c,kind())},true);
+function archive(){try{const p=window.HorticultureDocumentsCloud?.archiveAgPrint?.();if(p?.catch)p.catch(err=>console.warn('Archivage AG iOS',err))}catch(err){console.warn('Archivage AG iOS',err)}}
+function run(c,k){archive();if(k==='summary'&&window.HorticultureAGSynthesisPrint?.print){window.HorticultureAGSynthesisPrint.print(c);return}if(k==='questionnaire'&&window.HorticultureAGQuestionnairePrint?.print){window.HorticultureAGQuestionnairePrint.print(c);return}window.print()}
+document.addEventListener('click',e=>{if(!ios())return;const b=e.target.closest?.('#agConsultation [data-print]');if(!b)return;const r=route(),c=r?.id?campaign(r.id):null;if(!c)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();run(c,kind())},true);
 })();
