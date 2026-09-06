@@ -25,10 +25,13 @@ function canonical(btn){
 function cleanButton(btn){
   const label=canonical(btn);
   if(!label)return;
-  const span=document.createElement('span');
-  span.className='drawerCleanLabel';
-  span.textContent=label;
-  btn.replaceChildren(span);
+  const only=btn.children.length===1&&btn.firstElementChild?.classList.contains('drawerCleanLabel')&&btn.firstElementChild.textContent===label;
+  if(!only){
+    const span=document.createElement('span');
+    span.className='drawerCleanLabel';
+    span.textContent=label;
+    btn.replaceChildren(span);
+  }
   btn.dataset.drawerSanitized='1';
 }
 
