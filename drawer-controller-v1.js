@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__horticultureDrawerControllerV6)return;
-window.__horticultureDrawerControllerV6=true;
+if(window.__horticultureDrawerControllerV7)return;
+window.__horticultureDrawerControllerV7=true;
 const drawer=()=>document.getElementById('drawer');
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const views=()=>[...document.querySelectorAll('#appShell main.app > .view')];
@@ -11,7 +11,7 @@ function toggle(){const d=drawer();if(!d)return;d.classList.contains('open')?clo
 function neutralizeAG(){document.body.classList.remove('agWorkspaceMode');try{sessionStorage.removeItem('horticulture-ag-active-v1')}catch(_){}try{localStorage.removeItem('horticulture-ag-route-v3')}catch(_){}const ag=document.getElementById('agConsultation');if(ag){ag.classList.remove('active');ag.hidden=true;ag.style.setProperty('display','none','important');ag.style.setProperty('visibility','hidden','important');ag.style.setProperty('pointer-events','none','important')}}
 function clearCurrent(){neutralizeAG();views().forEach(v=>{v.classList.remove('active');if(v.id!=='agConsultation'){v.hidden=false;v.style.removeProperty('display');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events')}})}
 function activate(id){clearCurrent();const v=document.getElementById(id);if(!v)return false;v.hidden=false;v.style.removeProperty('display');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events');v.classList.add('active');close();window.scrollTo(0,0);return true}
-function home(){document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');return activate('home')}
+function home(){const nav=window.HorticultureMessagingNavigation?.showHome;if(typeof nav==='function')return nav();try{sessionStorage.removeItem('horticulture-messaging-route-v1')}catch(_){}document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');return activate('home')}
 function forceAdherents(){const v=document.getElementById('adherentsAdmin');if(!v)return false;neutralizeAG();views().forEach(x=>x.classList.toggle('active',x===v));v.hidden=false;v.style.removeProperty('display');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events');close();window.scrollTo(0,0);return true}
 function invokeAdherents(){const fn=window.HorticultureAdherents?.open;if(typeof fn!=='function')return false;try{fn()}catch(e){console.error('Adhérents',e);return false}return true}
 function openAdherents(){clearCurrent();close();let tries=0;const run=()=>{tries++;const called=invokeAdherents();if(called){requestAnimationFrame(forceAdherents);setTimeout(forceAdherents,20);setTimeout(forceAdherents,100);setTimeout(forceAdherents,300);return}if(tries<20)setTimeout(run,50)};run();return true}
@@ -21,19 +21,15 @@ function ensureMessagingEntry(){
   const list=drawer()?.querySelector('.dlist');if(!list)return null;
   let btn=[...list.querySelectorAll('button,a')].find(x=>String(x.dataset?.module||'').toLowerCase()==='messaging'||norm(x.textContent).includes('messagerie'));
   if(btn){btn.dataset.module='messaging';return btn}
-  btn=document.createElement('button');
-  btn.type='button';
-  btn.dataset.module='messaging';
-  btn.textContent='Messagerie';
+  btn=document.createElement('button');btn.type='button';btn.dataset.module='messaging';btn.textContent='Messagerie';
   const adherents=[...list.querySelectorAll('button,a')].find(x=>norm(x.textContent).includes('adherent')||String(x.dataset?.module||'').toLowerCase()==='adherents'||String(x.dataset?.permission||'').toLowerCase()==='adherents');
-  if(adherents?.nextSibling)list.insertBefore(btn,adherents.nextSibling);else if(adherents)list.appendChild(btn);else list.prepend(btn);
-  return btn;
+  if(adherents?.nextSibling)list.insertBefore(btn,adherents.nextSibling);else if(adherents)list.appendChild(btn);else list.prepend(btn);return btn;
 }
 function findHomeTarget(source){const permission=String(source.dataset?.permission||'').toLowerCase(),label=norm(source.textContent);const candidates=[...document.querySelectorAll('#home button,.dashTile,.space')];let target=null;if(permission)target=candidates.find(b=>String(b.dataset?.permission||'').toLowerCase()===permission);if(!target)target=candidates.find(b=>{const t=norm(b.textContent),h=norm(b.querySelector('b')?.textContent);return t===label||h===label||t.startsWith(label)||label.startsWith(h)});return target}
 function route(btn){const label=norm(btn.textContent),go=btn.dataset?.go;if(label.includes('accueil')||go==='home')return home();if(label.includes('messagerie')||String(btn.dataset?.permission||'').toLowerCase()==='messaging'||String(btn.dataset?.module||'').toLowerCase()==='messaging')return openMessaging();if(label.includes('adherent')||String(btn.dataset?.permission||'').toLowerCase()==='adherents'||String(btn.dataset?.module||'').toLowerCase()==='adherents')return openAdherents();if(go&&document.getElementById(go))return activate(go);const target=findHomeTarget(btn);if(target){clearCurrent();close();setTimeout(()=>target.click(),0);return true}neutralizeAG();close();return false}
 document.addEventListener('click',e=>{const menu=e.target.closest?.('#menu,.menuBtn');if(menu&&menu.closest('#appShell')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();toggle();return}const adh=e.target.closest?.('[data-permission="adherents"],[data-module="adherents"]');if(adh&&adh.closest('#appShell')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openAdherents();return}const d=drawer();if(!d)return;if(e.target===d){e.preventDefault();e.stopImmediatePropagation();close();return}const btn=e.target.closest?.('.dlist button');if(btn&&d.contains(btn)){const handled=route(btn);if(handled){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}}},true);
-['drawer-controller-style-v3','drawer-controller-style-v4','drawer-controller-style-v5'].forEach(id=>document.getElementById(id)?.remove());
-const style=document.createElement('style');style.id='drawer-controller-style-v6';style.textContent='#drawer.open{display:block!important}#appShell main.app>.view:not(.active){display:none!important}';document.head.appendChild(style);
+['drawer-controller-style-v3','drawer-controller-style-v4','drawer-controller-style-v5','drawer-controller-style-v6'].forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');style.id='drawer-controller-style-v7';style.textContent='#drawer.open{display:block!important}#appShell main.app>.view:not(.active){display:none!important}';document.head.appendChild(style);
 ensureMessagingEntry();[100,400,1200].forEach(ms=>setTimeout(ensureMessagingEntry,ms));window.addEventListener('pageshow',ensureMessagingEntry);window.addEventListener('horticulture-users-synced',()=>setTimeout(ensureMessagingEntry,20));
 if(!document.getElementById('messagingAttachmentsV1')){const s=document.createElement('script');s.id='messagingAttachmentsV1';s.src='./messaging-attachments-v1.js?v=1';s.async=true;document.head.appendChild(s)}
 window.HorticultureDrawer={open,close,toggle,home,activate,openAdherents,forceAdherents,openMessaging,forceMessaging,neutralizeAG,ensureMessagingEntry};
