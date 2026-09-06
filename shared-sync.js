@@ -2,6 +2,9 @@
 const USERS_KEY='horticulture-admin-users-v2';
 const API='https://script.google.com/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
 const POLL_MS=120000,TIMEOUT_MS=5000;let syncing=false,ready=false,queue=Promise.resolve(),pulling=false,localWritePending=0;const nativeSet=Storage.prototype.setItem,nativeRemove=Storage.prototype.removeItem;
+/* Empêche tous les anciens scripts de marque Messagerie de reprendre la main. */
+window.__horticultureMessagingLogoExactV1=true;window.__horticultureUnifiedModuleIconsV2=true;window.__horticultureMessagingBrandExactV2=true;
+['unifiedModuleIconsV1Style','unifiedModuleIconsV2Style','messagingBrandFinalV1Style','messagingBrandFinalV2Style'].forEach(id=>document.getElementById(id)?.remove());
 async function fetchWithTimeout(url,options={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),TIMEOUT_MS);try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}}
 async function request(body){const r=await fetchWithTimeout(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}),text=await r.text();let j=null;try{j=JSON.parse(text)}catch{}if(!r.ok||!j?.ok)throw new Error(j?.error||`HTTP ${r.status}`);return j}
 async function listRemote(){const r=await fetchWithTimeout(API+'?action=listUsers&t='+Date.now(),{cache:'no-store'}),text=await r.text();let j=null;try{j=JSON.parse(text)}catch{}if(!r.ok||!j?.ok||!Array.isArray(j.users))throw new Error(j?.error||'Lecture impossible');return j.users}
@@ -15,8 +18,8 @@ if(!document.getElementById('documentsCloudGlobalV5')){['documentsCloudGlobalV4'
 if(!document.getElementById('cloudUiBridgeV5')){['iphoneUiBridgeV1','iphoneUiBridgeV2','iphoneUiBridgeV3','iphoneUiBridgeV4'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='cloudUiBridgeV5';s.src='./iphone-ui-bridge-v1.js?v=5';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingV6')){['messagingV1','messagingV2','messagingV3','messagingV4','messagingV5'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingV6';s.src='./messaging-v6.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingPolishV3')){['messagingPolishV1','messagingPolishV2'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingPolishV3';s.src='./messaging-polish-v1.js?v=3';s.async=false;document.head.appendChild(s)}
-['messagingLogoV1','messagingLogoV2','messagingLogoV3','messagingBrandFinalV1','messagingBrandFinalV2','messagingBrandFinalV3','moduleIconsUnifiedV1','moduleIconsUnifiedV2'].forEach(id=>document.getElementById(id)?.remove());
-if(!document.getElementById('moduleIconsUnifiedV3')){const s=document.createElement('script');s.id='moduleIconsUnifiedV3';s.src='./module-icons-unified-v1.js?v=3';s.async=false;document.head.appendChild(s)}
+['messagingLogoV1','messagingLogoV2','messagingLogoV3','messagingBrandFinalV1','messagingBrandFinalV2','messagingBrandFinalV3','moduleIconsUnifiedV1','moduleIconsUnifiedV2','moduleIconsUnifiedV3'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('moduleIconsUnifiedV4')){const s=document.createElement('script');s.id='moduleIconsUnifiedV4';s.src='./module-icons-unified-v1.js?v=4';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('adherentsAdminV2')){const s=document.createElement('script');s.id='adherentsAdminV2';s.src='./adherents-admin-v2.js?v=7';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=3';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('drawerControllerV3')){const s=document.createElement('script');s.id='drawerControllerV3';s.src='./drawer-controller-v1.js?v=3';s.async=true;document.head.appendChild(s)}
