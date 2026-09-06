@@ -1,22 +1,20 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingPolishV12)return;window.__horticultureMessagingPolishV12=true;
-['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style','messagingPolishV7Style','messagingPolishV8Style','messagingPolishV9Style','messagingPolishV10Style','messagingPolishV11Style'].forEach(id=>document.getElementById(id)?.remove());
+if(window.__horticultureMessagingPolishV13)return;window.__horticultureMessagingPolishV13=true;
+['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style','messagingPolishV7Style','messagingPolishV8Style','messagingPolishV9Style','messagingPolishV10Style','messagingPolishV11Style','messagingPolishV12Style'].forEach(id=>document.getElementById(id)?.remove());
 const root=document.documentElement;let baseTop=0;
 function messagingActive(){return !!document.querySelector('#messaging.view.active')}
 function syncMode(){document.body.classList.toggle('m6MessagingActive',messagingActive())}
-function syncViewport(){const vv=window.visualViewport,h=Math.round(vv?.height||innerHeight||root.clientHeight),top=Math.round(vv?.offsetTop||0);root.style.setProperty('--m6-vh',h+'px');root.style.setProperty('--m6-vtop',top+'px');syncMode()}
+function syncViewport(){const vv=window.visualViewport,h=Math.round(vv?.height||innerHeight||root.clientHeight),top=Math.round(vv?.offsetTop||0),header=document.querySelector('#appShell>.top'),rect=header?.getBoundingClientRect(),headerH=Math.max(0,Math.round((rect?.bottom??(top+72))-top));root.style.setProperty('--m6-vh',h+'px');root.style.setProperty('--m6-vtop',top+'px');root.style.setProperty('--m6-header-h',(headerH||72)+'px');syncMode()}
 function keepComposerVisible(){syncViewport();const ta=document.querySelector('#messaging .m6Composer textarea');if(!ta||document.activeElement!==ta)return;requestAnimationFrame(()=>{const list=document.querySelector('#messaging .m6Messages');if(list)list.scrollTop=list.scrollHeight})}
 syncViewport();window.visualViewport?.addEventListener('resize',keepComposerVisible,{passive:true});window.visualViewport?.addEventListener('scroll',keepComposerVisible,{passive:true});window.addEventListener('resize',syncViewport,{passive:true});window.addEventListener('orientationchange',()=>setTimeout(syncViewport,100),{passive:true});
 document.addEventListener('focusin',e=>{if(!e.target?.closest?.('#messaging .m6Composer'))return;baseTop=scrollY||0;document.body.classList.add('m6KeyboardOpen');keepComposerVisible();setTimeout(keepComposerVisible,60);setTimeout(keepComposerVisible,180);setTimeout(keepComposerVisible,360)},true);
 document.addEventListener('focusout',e=>{if(!e.target?.closest?.('#messaging .m6Composer'))return;document.body.classList.remove('m6KeyboardOpen');setTimeout(()=>{syncViewport();if(scrollY!==baseTop)scrollTo(0,baseTop)},120)},true);
-let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;syncMode()})}).observe(document.getElementById('appShell')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-const s=document.createElement('style');s.id='messagingPolishV12Style';s.textContent=`
-/* Bouton retour plus discret, type messagerie native. */
+let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;syncViewport()})}).observe(document.getElementById('appShell')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
+const s=document.createElement('style');s.id='messagingPolishV13Style';s.textContent=`
 #messaging .m6Home,#messaging .m6BackList{width:38px!important;height:38px!important;border-radius:11px!important;padding:10px!important;background:#ffffff10!important}
 #messaging .m6Home svg,#messaging .m6BackList svg{width:100%!important;height:100%!important;stroke-width:1.35!important}
 #messaging .m6Home:hover,#messaging .m6BackList:hover{background:#ffffff18!important}
-/* Desktop : la messagerie suit le conteneur, sans zoom ni translation. */
 @media(min-width:701px){
  body.m6MessagingActive{overflow:auto!important}
  #messaging.view.active{position:static!important;left:auto!important;right:auto!important;transform:none!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;box-sizing:border-box!important}
@@ -42,7 +40,7 @@ const s=document.createElement('style');s.id='messagingPolishV12Style';s.textCon
  html,body{max-width:100%!important;overflow-x:hidden!important}body.m6MessagingActive{overflow:hidden!important;overscroll-behavior:none!important}
  body.m6MessagingActive #appShell>.top{position:fixed!important;top:var(--m6-vtop,0px)!important;left:0!important;right:0!important;z-index:60!important;display:flex!important;visibility:visible!important;opacity:1!important;transform:none!important}
  body.m6MessagingActive .bottom{display:none!important}body:not(.m6MessagingActive) .bottom{display:grid!important}
- #messaging.view.active{position:fixed!important;top:calc(var(--m6-vtop,0px) + 72px)!important;left:0!important;right:0!important;bottom:auto!important;transform:none!important;width:100vw!important;height:calc(var(--m6-vh,100dvh) - 72px)!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;z-index:9!important;background:#fff!important}
+ #messaging.view.active{position:fixed!important;top:calc(var(--m6-vtop,0px) + var(--m6-header-h,72px))!important;left:0!important;right:0!important;bottom:auto!important;transform:none!important;width:100vw!important;height:calc(var(--m6-vh,100dvh) - var(--m6-header-h,72px))!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;z-index:9!important;background:#fff!important}
  #messaging .m6Shell{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important}
  #messaging .m6Layout,#messaging .m6Side{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;overflow:hidden!important}
  #messaging .m6Side{display:flex!important;flex-direction:column!important}#messaging .m6Head,#messaging .m6SearchWrap{width:100%!important;max-width:none!important;flex:0 0 auto!important}
