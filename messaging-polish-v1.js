@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingPolishV11)return;window.__horticultureMessagingPolishV11=true;
-['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style','messagingPolishV7Style','messagingPolishV8Style','messagingPolishV9Style','messagingPolishV10Style'].forEach(id=>document.getElementById(id)?.remove());
+if(window.__horticultureMessagingPolishV12)return;window.__horticultureMessagingPolishV12=true;
+['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style','messagingPolishV7Style','messagingPolishV8Style','messagingPolishV9Style','messagingPolishV10Style','messagingPolishV11Style'].forEach(id=>document.getElementById(id)?.remove());
 const root=document.documentElement;let baseTop=0;
 function messagingActive(){return !!document.querySelector('#messaging.view.active')}
 function syncMode(){document.body.classList.toggle('m6MessagingActive',messagingActive())}
@@ -11,7 +11,11 @@ syncViewport();window.visualViewport?.addEventListener('resize',keepComposerVisi
 document.addEventListener('focusin',e=>{if(!e.target?.closest?.('#messaging .m6Composer'))return;baseTop=scrollY||0;document.body.classList.add('m6KeyboardOpen');keepComposerVisible();setTimeout(keepComposerVisible,60);setTimeout(keepComposerVisible,180);setTimeout(keepComposerVisible,360)},true);
 document.addEventListener('focusout',e=>{if(!e.target?.closest?.('#messaging .m6Composer'))return;document.body.classList.remove('m6KeyboardOpen');setTimeout(()=>{syncViewport();if(scrollY!==baseTop)scrollTo(0,baseTop)},120)},true);
 let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;syncMode()})}).observe(document.getElementById('appShell')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-const s=document.createElement('style');s.id='messagingPolishV11Style';s.textContent=`
+const s=document.createElement('style');s.id='messagingPolishV12Style';s.textContent=`
+/* Bouton retour plus discret, type messagerie native. */
+#messaging .m6Home,#messaging .m6BackList{width:38px!important;height:38px!important;border-radius:11px!important;padding:10px!important;background:#ffffff10!important}
+#messaging .m6Home svg,#messaging .m6BackList svg{width:100%!important;height:100%!important;stroke-width:1.35!important}
+#messaging .m6Home:hover,#messaging .m6BackList:hover{background:#ffffff18!important}
 /* Desktop : la messagerie suit le conteneur, sans zoom ni translation. */
 @media(min-width:701px){
  body.m6MessagingActive{overflow:auto!important}
