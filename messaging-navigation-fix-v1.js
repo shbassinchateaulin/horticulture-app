@@ -126,7 +126,7 @@ function observe(){
   if(!main){setTimeout(observe,100);return}
   if(observer)return;
   observer=new MutationObserver(()=>queueMicrotask(enforce));
-  observer.observe(main,{subtree:false,childList:true,attributes:true,attributeFilter:['class','style','hidden']});
+  observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden']});
   enforce();
 }
 
