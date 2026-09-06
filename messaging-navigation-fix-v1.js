@@ -1,43 +1,52 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingNavigationFixV1)return;window.__horticultureMessagingNavigationFixV1=true;
+if(window.__horticultureMessagingNavigationFixV2)return;window.__horticultureMessagingNavigationFixV2=true;
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const views=()=>[...document.querySelectorAll('#appShell main.app > .view')];
 function clearMessagingState(){
   document.body.classList.remove('m6MessagingActive','m6KeyboardOpen');
   document.documentElement.style.removeProperty('--m6-vtop');
   const m=document.getElementById('messaging');
-  if(m)m.classList.remove('active');
+  if(m){m.classList.remove('active');m.style.removeProperty('display');m.style.removeProperty('visibility');m.style.removeProperty('opacity');m.style.removeProperty('pointer-events')}
 }
 function showHome(){
   clearMessagingState();
-  const home=document.getElementById('home');
-  if(!home)return false;
+  const home=document.getElementById('home');if(!home)return false;
   views().forEach(v=>v.classList.toggle('active',v===home));
-  home.hidden=false;
+  home.hidden=false;home.removeAttribute('hidden');
   home.style.removeProperty('display');home.style.removeProperty('visibility');home.style.removeProperty('opacity');home.style.removeProperty('pointer-events');
   document.getElementById('drawer')?.classList.remove('open');
   window.scrollTo(0,0);
-  window.dispatchEvent(new CustomEvent('horticulture-home-restored'));
+  requestAnimationFrame(()=>window.dispatchEvent(new CustomEvent('horticulture-home-restored')));
   return true;
 }
 function forceMessagingVisible(){
   const m=document.getElementById('messaging');if(!m)return false;
   views().forEach(v=>v.classList.toggle('active',v===m));
-  m.hidden=false;m.style.removeProperty('display');m.style.removeProperty('visibility');m.style.removeProperty('opacity');m.style.removeProperty('pointer-events');
+  m.hidden=false;m.removeAttribute('hidden');
+  m.style.removeProperty('display');m.style.removeProperty('visibility');m.style.removeProperty('opacity');m.style.removeProperty('pointer-events');
   document.body.classList.add('m6MessagingActive');
   document.getElementById('drawer')?.classList.remove('open');
+  window.scrollTo(0,0);
   return true;
 }
-function openMessaging(){
+async function openMessaging(){
+  clearMessagingState();
+  try{
+    const fn=window.HorticultureMessaging?.open;
+    if(typeof fn==='function')await fn();
+  }catch(e){console.warn('Ouverture Messagerie',e)}
+  if(forceMessagingVisible())return true;
   let tries=0;
-  const run=()=>{
-    tries++;
-    try{window.HorticultureMessaging?.open?.()}catch(e){console.warn('Ouverture Messagerie',e)}
-    if(forceMessagingVisible())return;
-    if(tries<20)setTimeout(run,50);
-  };
-  run();
+  return await new Promise(resolve=>{
+    const run=()=>{
+      tries++;
+      if(forceMessagingVisible())return resolve(true);
+      if(tries>=20)return resolve(false);
+      setTimeout(run,50);
+    };
+    run();
+  });
 }
 function isHomeControl(el){
   if(!el)return false;
@@ -50,7 +59,11 @@ function isHomeControl(el){
 }
 function isMessagingControl(el){
   const btn=el?.closest?.('[data-module="messaging"],[data-permission="messaging"]');
-  return btn&&btn.closest('#appShell')&&!btn.closest('#messaging');
+  if(btn&&btn.closest('#appShell')&&!btn.closest('#messaging'))return btn;
+  const tile=el?.closest?.('#home button,#home .space,#home .dashTile,#drawer .dlist button');
+  if(!tile)return null;
+  const label=norm(tile.textContent);
+  return label.includes('messagerie')?tile:null;
 }
 document.addEventListener('click',e=>{
   if(isHomeControl(e.target)){
@@ -60,8 +73,9 @@ document.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openMessaging();return;
   }
 },true);
-const style=document.createElement('style');style.id='messagingNavigationFixV1Style';style.textContent=`
-#messaging .m6Home{width:auto!important;min-width:72px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;padding:8px 10px 8px 7px!important}
+['messagingNavigationFixV1Style'].forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');style.id='messagingNavigationFixV2Style';style.textContent=`
+#messaging .m6Home{width:auto!important;min-width:76px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 11px 8px 7px!important}
 #messaging .m6Home::after{content:'Retour';font-size:12px;font-weight:800;line-height:1;color:currentColor}
 #messaging .m6Home svg{width:18px!important;height:18px!important;flex:0 0 18px!important;stroke-width:1.35!important}
 `;
