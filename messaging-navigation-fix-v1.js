@@ -1,20 +1,116 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingNavigationFixV5)return;window.__horticultureMessagingNavigationFixV5=true;
+if(window.__horticultureMessagingNavigationFixV6)return;
+window.__horticultureMessagingNavigationFixV6=true;
+
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const views=()=>[...document.querySelectorAll('#appShell main.app > .view')];
-const desktop=()=>window.matchMedia('(min-width:701px)').matches;
-let lockUntil=0,enforcing=false;
-function clearMessagingState(){document.body.classList.remove('m6MessagingActive','m6KeyboardOpen');const m=document.getElementById('messaging');if(m){m.classList.remove('active');m.hidden=false;m.removeAttribute('hidden');m.style.removeProperty('display');m.style.removeProperty('visibility');m.style.removeProperty('opacity');m.style.removeProperty('pointer-events')}}
-function showHome(){lockUntil=0;clearMessagingState();const home=document.getElementById('home');if(!home)return false;views().forEach(v=>v.classList.toggle('active',v===home));home.hidden=false;home.removeAttribute('hidden');home.style.removeProperty('display');home.style.removeProperty('visibility');home.style.removeProperty('opacity');home.style.removeProperty('pointer-events');document.getElementById('drawer')?.classList.remove('open');window.scrollTo(0,0);return true}
-function forceMessagingVisible(){const m=document.getElementById('messaging');if(!m)return false;views().forEach(v=>v.classList.toggle('active',v===m));m.hidden=false;m.removeAttribute('hidden');m.style.setProperty('display','block','important');m.style.setProperty('visibility','visible','important');m.style.setProperty('opacity','1','important');m.style.setProperty('pointer-events','auto','important');document.body.classList.add('m6MessagingActive');document.getElementById('drawer')?.classList.remove('open');window.scrollTo(0,0);return true}
-function openMessaging(){lockUntil=Date.now()+1200;let called=false;try{const fn=window.HorticultureMessaging?.open;if(typeof fn==='function'){called=true;Promise.resolve(fn()).catch(e=>console.warn('Ouverture Messagerie',e))}}catch(e){console.warn('Ouverture Messagerie',e)}if(!called)forceMessagingVisible();[0,30,80,160,300,600,1000].forEach(ms=>setTimeout(()=>{if(Date.now()<=lockUntil)forceMessagingVisible()},ms));let tries=0;const wait=()=>{if(forceMessagingVisible())return;if(++tries<40)setTimeout(wait,40)};wait();return true}
-function isHomeControl(el){if(!el)return false;if(el.closest?.('#messaging .m6Home'))return true;const btn=el.closest?.('button,[data-go],[data-view],a');if(!btn)return false;const inNav=!!btn.closest?.('#drawer,.bottom,.bottomNav,.mobileNav,#appShell>.bottom');const go=norm(btn.dataset?.go||btn.dataset?.view||'');const label=norm(btn.textContent);return inNav&&(go==='home'||label==='accueil'||label.startsWith('accueil '))}
-function isMessagingControl(el){const btn=el?.closest?.('[data-module="messaging"],[data-permission="messaging"]');if(btn&&btn.closest('#appShell')&&!btn.closest('#messaging'))return btn;const tile=el?.closest?.('#home button,#home .space,#home .dashTile,#drawer .dlist button,.moduleTile,.dashboardTile');if(!tile||tile.closest('#messaging'))return null;return norm(tile.textContent).includes('messagerie')?tile:null}
-function desktopOpenHandler(e){if(!desktop())return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openMessaging()}
-function bindDesktopControls(){if(!desktop())return;const selectors='[data-module="messaging"],[data-permission="messaging"],#home button,#home .space,#home .dashTile,#drawer .dlist button,.moduleTile,.dashboardTile';document.querySelectorAll(selectors).forEach(el=>{if(el.closest('#messaging')||el.dataset.m6DesktopBound==='1')return;const isMsg=String(el.dataset.module||el.dataset.permission||'').toLowerCase()==='messaging'||norm(el.textContent).includes('messagerie');if(!isMsg)return;el.dataset.m6DesktopBound='1';el.addEventListener('click',desktopOpenHandler,true)})}
-document.addEventListener('click',e=>{if(isHomeControl(e.target)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();showHome();return}const target=isMessagingControl(e.target);if(!target)return;if(desktop()&&target.dataset.m6DesktopBound==='1')return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openMessaging()},true);
-new MutationObserver(()=>{bindDesktopControls();if(Date.now()>lockUntil||enforcing)return;const m=document.getElementById('messaging');if(!m||m.classList.contains('active')&&getComputedStyle(m).display!=='none')return;enforcing=true;requestAnimationFrame(()=>{forceMessagingVisible();enforcing=false})}).observe(document.getElementById('appShell')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style','data-module','data-permission']});
-window.addEventListener('resize',bindDesktopControls,{passive:true});setTimeout(bindDesktopControls,0);setTimeout(bindDesktopControls,250);setTimeout(bindDesktopControls,1000);
-['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style'].forEach(id=>document.getElementById(id)?.remove());const style=document.createElement('style');style.id='messagingNavigationFixV5Style';style.textContent=`#messaging .m6Home{width:auto!important;min-width:76px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 11px 8px 7px!important}#messaging .m6Home::after{content:'Retour';font-size:12px;font-weight:800;line-height:1;color:currentColor}#messaging .m6Home svg{width:18px!important;height:18px!important;flex:0 0 18px!important;stroke-width:1.35!important}`;document.head.appendChild(style);window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible,clearMessagingState,bindDesktopControls};
+
+function closeDrawer(){
+  const d=document.getElementById('drawer');
+  if(!d)return;
+  d.classList.remove('open');
+  d.style.removeProperty('display');
+}
+
+function cleanViewStyle(v){
+  if(!v)return;
+  v.hidden=false;
+  v.removeAttribute('hidden');
+  v.style.removeProperty('display');
+  v.style.removeProperty('visibility');
+  v.style.removeProperty('opacity');
+  v.style.removeProperty('pointer-events');
+}
+
+function forceMessagingVisible(){
+  const m=document.getElementById('messaging');
+  if(!m)return false;
+  views().forEach(v=>v.classList.toggle('active',v===m));
+  cleanViewStyle(m);
+  document.body.classList.add('m6MessagingActive','messaging-open');
+  closeDrawer();
+  window.scrollTo(0,0);
+  return true;
+}
+
+function showHome(){
+  const home=document.getElementById('home');
+  if(!home)return false;
+  const m=document.getElementById('messaging');
+  views().forEach(v=>v.classList.toggle('active',v===home));
+  cleanViewStyle(home);
+  if(m){
+    m.classList.remove('active');
+    m.style.removeProperty('display');
+    m.style.removeProperty('visibility');
+    m.style.removeProperty('opacity');
+    m.style.removeProperty('pointer-events');
+  }
+  document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
+  closeDrawer();
+  window.scrollTo(0,0);
+  return true;
+}
+
+function openMessaging(){
+  try{
+    const fn=window.HorticultureMessaging?.open;
+    if(typeof fn==='function'){
+      const result=fn();
+      /* Le rendu du module est synchrone avant sa requête réseau. */
+      forceMessagingVisible();
+      requestAnimationFrame(forceMessagingVisible);
+      Promise.resolve(result).catch(e=>console.warn('Ouverture Messagerie',e));
+      return true;
+    }
+  }catch(e){
+    console.warn('Ouverture Messagerie',e);
+  }
+  return forceMessagingVisible();
+}
+
+function isMessagingControl(el){
+  if(!el)return null;
+  const direct=el.closest?.('[data-module="messaging"],[data-permission="messaging"]');
+  if(direct&&direct.closest('#appShell')&&!direct.closest('#messaging'))return direct;
+  const tile=el.closest?.('#home button,#home .space,#home .dashTile,#drawer .dlist button,.moduleTile,.dashboardTile');
+  if(!tile||tile.closest('#messaging'))return null;
+  return norm(tile.textContent).includes('messagerie')?tile:null;
+}
+
+/*
+ * Un seul gestionnaire délégué, en capture.
+ * Il est chargé avant le contrôleur du tiroir : aucun deuxième gestionnaire
+ * ne peut voler le clic sur Mac/PC après un retour à l'accueil.
+ */
+document.addEventListener('click',e=>{
+  const back=e.target.closest?.('#messaging .m6Home');
+  if(back){
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    showHome();
+    return;
+  }
+  const target=isMessagingControl(e.target);
+  if(!target)return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  openMessaging();
+},true);
+
+['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style','messagingNavigationFixV5Style']
+  .forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');
+style.id='messagingNavigationFixV6Style';
+style.textContent=`
+#messaging .m6Home{width:auto!important;min-width:78px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 11px 8px 7px!important}
+#messaging .m6Home::after{content:'Retour';font-size:12px;font-weight:800;line-height:1;color:currentColor}
+#messaging .m6Home svg{width:18px!important;height:18px!important;flex:0 0 18px!important;stroke-width:1.35!important}
+`;
+document.head.appendChild(style);
+
+window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible};
 })();
