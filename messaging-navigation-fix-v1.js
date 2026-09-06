@@ -1,55 +1,32 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingNavigationFixV8)return;
-window.__horticultureMessagingNavigationFixV8=true;
+if(window.__horticultureMessagingNavigationFixV9)return;
+window.__horticultureMessagingNavigationFixV9=true;
 
 const ROUTE_KEY='horticulture-messaging-route-v1';
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const views=()=>[...document.querySelectorAll('#appShell main.app > .view')];
-let enforcing=false,opening=false,observer=null;
+let opening=false;
 
 function wanted(){try{return sessionStorage.getItem(ROUTE_KEY)==='messaging'}catch(_){return false}}
 function setWanted(on){try{on?sessionStorage.setItem(ROUTE_KEY,'messaging'):sessionStorage.removeItem(ROUTE_KEY)}catch(_){}}
 function closeDrawer(){const d=document.getElementById('drawer');if(!d)return;d.classList.remove('open');d.style.removeProperty('display')}
-function clean(v){if(!v)return;v.hidden=false;v.removeAttribute('hidden');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events')}
+function clearLegacyInline(v){if(!v)return;['display','visibility','opacity','pointer-events'].forEach(p=>v.style.removeProperty(p));v.hidden=false;v.removeAttribute('hidden')}
 
-function hardShow(target){
+function activate(target){
   if(!target)return false;
-  enforcing=true;
   for(const v of views()){
     const on=v===target;
-    v.classList.toggle('active',on);
-    v.hidden=false;
-    v.removeAttribute('hidden');
-    v.style.setProperty('display',on?'block':'none','important');
-    if(on){
-      v.style.setProperty('visibility','visible','important');
-      v.style.setProperty('opacity','1','important');
-      v.style.setProperty('pointer-events','auto','important');
-    }else{
-      v.style.removeProperty('visibility');
-      v.style.removeProperty('opacity');
-      v.style.setProperty('pointer-events','none','important');
-    }
+    if(v.classList.contains('active')!==on)v.classList.toggle('active',on);
+    if(v===target)clearLegacyInline(v);
   }
-  enforcing=false;
   return true;
-}
-
-function syncExternalRoute(route){
-  const nav=window.HorticultureNavigation;
-  try{
-    if(route==='messaging'&&typeof nav?.openRoute==='function')nav.openRoute('messaging');
-    else if(route==='home'&&typeof nav?.openHome==='function')nav.openHome();
-    else if(route==='home'&&typeof nav?.home==='function')nav.home();
-  }catch(e){console.warn('Synchronisation navigation Messagerie',e)}
 }
 
 function forceMessagingVisible(){
   const m=document.getElementById('messaging');
   if(!m)return false;
-  clean(m);
-  hardShow(m);
+  activate(m);
   document.body.classList.add('m6MessagingActive','messaging-open');
   closeDrawer();
   window.scrollTo(0,0);
@@ -59,14 +36,9 @@ function forceMessagingVisible(){
 function forceHomeVisible(){
   const home=document.getElementById('home');
   if(!home)return false;
-  clean(home);
-  hardShow(home);
+  activate(home);
   const m=document.getElementById('messaging');
-  if(m){
-    m.classList.remove('active');
-    m.style.setProperty('display','none','important');
-    m.style.setProperty('pointer-events','none','important');
-  }
+  if(m){m.classList.remove('active');clearLegacyInline(m)}
   document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
   closeDrawer();
   window.scrollTo(0,0);
@@ -76,11 +48,8 @@ function forceHomeVisible(){
 function showHome(){
   setWanted(false);
   forceHomeVisible();
-  syncExternalRoute('home');
-  /* Certains anciens routeurs utilisent une liste de vues créée avant la Messagerie.
-     On réapplique donc explicitement l'état après leur exécution. */
   requestAnimationFrame(forceHomeVisible);
-  [30,120,350].forEach(ms=>setTimeout(forceHomeVisible,ms));
+  setTimeout(forceHomeVisible,80);
   return true;
 }
 
@@ -94,10 +63,10 @@ function openMessaging(){
     if(typeof fn==='function')result=fn();
   }catch(e){console.warn('Ouverture Messagerie',e)}
   forceMessagingVisible();
-  syncExternalRoute('messaging');
-  [0,20,60,140,300,650,1200].forEach(ms=>setTimeout(()=>{if(wanted())forceMessagingVisible()},ms));
+  requestAnimationFrame(()=>{if(wanted())forceMessagingVisible()});
+  [80,220,600].forEach(ms=>setTimeout(()=>{if(wanted())forceMessagingVisible()},ms));
   Promise.resolve(result).catch(e=>console.warn('Ouverture Messagerie',e)).finally(()=>{opening=false});
-  if(result===undefined)setTimeout(()=>{opening=false},250);
+  if(result===undefined)setTimeout(()=>{opening=false},180);
   return true;
 }
 
@@ -127,9 +96,9 @@ function isLeavingMessaging(el){
 }
 
 document.addEventListener('click',e=>{
+  const m=document.getElementById('messaging');
   const home=isHomeControl(e.target);
-  const messagingVisible=document.getElementById('messaging')?.classList.contains('active');
-  if(home&&(wanted()||messagingVisible)){
+  if(home&&(wanted()||m?.classList.contains('active'))){
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();showHome();return;
   }
   const target=isMessagingControl(e.target);
@@ -138,51 +107,32 @@ document.addEventListener('click',e=>{
   }
   if(isLeavingMessaging(e.target)){
     setWanted(false);
+    if(m)m.classList.remove('active');
     document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
   }
 },true);
 
-function enforce(){
-  if(enforcing)return;
+function restore(){
+  if(!wanted())return;
   const m=document.getElementById('messaging');
-  const home=document.getElementById('home');
-  if(wanted()){
-    if(!m||!m.querySelector('.m6Shell')){
-      if(typeof window.HorticultureMessaging?.open==='function')openMessaging();
-      return;
-    }
-    if(!m.classList.contains('active')||getComputedStyle(m).display==='none')forceMessagingVisible();
+  if(m?.querySelector('.m6Shell')){
+    if(!m.classList.contains('active'))forceMessagingVisible();
     return;
   }
-  /* Si l'accueil est actif, la Messagerie ne doit jamais rester rendue dessous. */
-  if(home?.classList.contains('active')&&m){
-    m.classList.remove('active');
-    m.style.setProperty('display','none','important');
-    m.style.setProperty('pointer-events','none','important');
-    document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
-  }
+  if(typeof window.HorticultureMessaging?.open==='function'&&!opening)openMessaging();
 }
 
-function observe(){
-  const main=document.querySelector('#appShell main.app');
-  if(!main){setTimeout(observe,100);return}
-  if(observer)return;
-  observer=new MutationObserver(()=>queueMicrotask(enforce));
-  observer.observe(main,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden']});
-  enforce();
-}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restore,{once:true});else restore();
+[80,220,500,1000,1800,3000].forEach(ms=>setTimeout(restore,ms));
+window.addEventListener('pageshow',restore);window.addEventListener('focus',restore);
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
-window.addEventListener('pageshow',enforce);window.addEventListener('focus',enforce);
-setInterval(enforce,400);
-
-['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style','messagingNavigationFixV5Style','messagingNavigationFixV6Style','messagingNavigationFixV7Style'].forEach(id=>document.getElementById(id)?.remove());
-const style=document.createElement('style');style.id='messagingNavigationFixV8Style';style.textContent=`
+['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style','messagingNavigationFixV5Style','messagingNavigationFixV6Style','messagingNavigationFixV7Style','messagingNavigationFixV8Style'].forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');style.id='messagingNavigationFixV9Style';style.textContent=`
 #messaging .m6Home{width:auto!important;min-width:78px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 11px 8px 7px!important}
 #messaging .m6Home::after{content:'Retour';font-size:12px;font-weight:800;line-height:1;color:currentColor}
 #messaging .m6Home svg{width:18px!important;height:18px!important;flex:0 0 18px!important;stroke-width:1.35!important}
-#home.view.active~#messaging.view{display:none!important;pointer-events:none!important}
+#messaging.view:not(.active){display:none!important;pointer-events:none!important}
 `;
 document.head.appendChild(style);
-window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible,forceHomeVisible,enforce};
+window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible,forceHomeVisible,restore};
 })();
