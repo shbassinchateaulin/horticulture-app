@@ -1,21 +1,45 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingPolishV6)return;window.__horticultureMessagingPolishV6=true;
-['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style'].forEach(id=>document.getElementById(id)?.remove());
+if(window.__horticultureMessagingPolishV7)return;window.__horticultureMessagingPolishV7=true;
+['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style'].forEach(id=>document.getElementById(id)?.remove());
 const root=document.documentElement;
+let baseTop=0;
 function syncViewport(){
   const vv=window.visualViewport;
   const h=Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight);
+  const top=Math.round(vv?.offsetTop||0);
   root.style.setProperty('--m6-vh',h+'px');
+  root.style.setProperty('--m6-vtop',top+'px');
+}
+function composerFocused(){return !!document.activeElement?.closest?.('#messaging .m6Composer')}
+function keepComposerVisible(){
+  syncViewport();
+  const ta=document.querySelector('#messaging .m6Composer textarea');
+  if(!ta||document.activeElement!==ta)return;
+  requestAnimationFrame(()=>{
+    document.querySelector('#messaging .m6Messages')?.scrollTo?.({top:document.querySelector('#messaging .m6Messages')?.scrollHeight||0,behavior:'auto'});
+  });
 }
 syncViewport();
-window.visualViewport?.addEventListener('resize',syncViewport,{passive:true});
-window.visualViewport?.addEventListener('scroll',syncViewport,{passive:true});
+window.visualViewport?.addEventListener('resize',keepComposerVisible,{passive:true});
+window.visualViewport?.addEventListener('scroll',keepComposerVisible,{passive:true});
 window.addEventListener('resize',syncViewport,{passive:true});
-window.addEventListener('orientationchange',()=>setTimeout(syncViewport,80),{passive:true});
-document.addEventListener('focusin',e=>{if(e.target?.closest?.('#messaging .m6Composer')){syncViewport();setTimeout(syncViewport,80);setTimeout(syncViewport,260)}},true);
-document.addEventListener('focusout',e=>{if(e.target?.closest?.('#messaging .m6Composer')){setTimeout(syncViewport,80);setTimeout(syncViewport,260)}},true);
-const s=document.createElement('style');s.id='messagingPolishV6Style';s.textContent=`
+window.addEventListener('orientationchange',()=>setTimeout(syncViewport,100),{passive:true});
+document.addEventListener('focusin',e=>{
+  if(!e.target?.closest?.('#messaging .m6Composer'))return;
+  baseTop=window.scrollY||0;
+  document.body.classList.add('m6KeyboardOpen');
+  keepComposerVisible();
+  setTimeout(keepComposerVisible,60);
+  setTimeout(keepComposerVisible,180);
+  setTimeout(keepComposerVisible,360);
+},true);
+document.addEventListener('focusout',e=>{
+  if(!e.target?.closest?.('#messaging .m6Composer'))return;
+  document.body.classList.remove('m6KeyboardOpen');
+  setTimeout(()=>{syncViewport();if(window.scrollY!==baseTop)window.scrollTo(0,baseTop)},120);
+},true);
+const s=document.createElement('style');s.id='messagingPolishV7Style';s.textContent=`
 @media(min-width:701px){
   #messaging.view.active{position:relative!important;left:50%!important;transform:translateX(-50%)!important;width:calc(100vw - 48px)!important;max-width:none!important;margin:0!important;padding:0!important}
   #messaging .m6Shell{width:100%!important;max-width:none!important;height:calc(100dvh - 118px)!important;min-height:560px!important;margin:0!important;border-radius:22px!important}
@@ -33,7 +57,9 @@ const s=document.createElement('style');s.id='messagingPolishV6Style';s.textCont
 @media(max-width:700px){
   html,body{max-width:100%!important;overflow-x:hidden!important}
   body:has(#messaging.view.active){overflow:hidden!important;overscroll-behavior:none!important}
-  #messaging.view.active{position:fixed!important;top:72px!important;left:0!important;right:0!important;bottom:auto!important;transform:none!important;width:100vw!important;height:calc(var(--m6-vh,100dvh) - 72px)!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;z-index:9!important;background:#fff!important}
+  #messaging.view.active{position:fixed!important;top:calc(var(--m6-vtop,0px) + 72px)!important;left:0!important;right:0!important;bottom:auto!important;transform:none!important;width:100vw!important;height:calc(var(--m6-vh,100dvh) - 72px)!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;z-index:9!important;background:#fff!important}
+  body.m6KeyboardOpen #messaging.view.active{top:var(--m6-vtop,0px)!important;height:var(--m6-vh,100dvh)!important;z-index:50!important}
+  body.m6KeyboardOpen #appShell>.top{visibility:hidden!important;pointer-events:none!important}
   #messaging .m6Shell{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important}
   #messaging .m6Layout{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;overflow:hidden!important}
   #messaging .m6Side{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
@@ -46,7 +72,7 @@ const s=document.createElement('style');s.id='messagingPolishV6Style';s.textCont
   #messaging .m6Chat{display:flex!important;flex-direction:column!important}
   #messaging .m6ChatHead{flex:0 0 66px!important;position:relative!important;top:auto!important}
   #messaging .m6Messages{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important}
-  #messaging .m6Composer{flex:0 0 auto!important;position:relative!important;bottom:auto!important;padding-bottom:max(9px,env(safe-area-inset-bottom))!important}
+  #messaging .m6Composer{flex:0 0 auto!important;position:relative!important;bottom:auto!important;padding-bottom:max(9px,env(safe-area-inset-bottom))!important;background:#eef1ef!important}
   #messaging .m6Composer textarea{font-size:16px!important}
 }
 `;document.head.appendChild(s);
