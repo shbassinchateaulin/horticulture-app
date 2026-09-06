@@ -1,23 +1,26 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingPolishV7)return;window.__horticultureMessagingPolishV7=true;
-['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style'].forEach(id=>document.getElementById(id)?.remove());
+if(window.__horticultureMessagingPolishV8)return;window.__horticultureMessagingPolishV8=true;
+['messagingPolishV1Style','messagingPolishV2Style','messagingPolishV3Style','messagingPolishV4Style','messagingPolishV5Style','messagingPolishV6Style','messagingPolishV7Style'].forEach(id=>document.getElementById(id)?.remove());
 const root=document.documentElement;
 let baseTop=0;
+function messagingActive(){return !!document.querySelector('#messaging.view.active')}
+function syncMode(){document.body.classList.toggle('m6MessagingActive',messagingActive())}
 function syncViewport(){
   const vv=window.visualViewport;
   const h=Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight);
   const top=Math.round(vv?.offsetTop||0);
   root.style.setProperty('--m6-vh',h+'px');
   root.style.setProperty('--m6-vtop',top+'px');
+  syncMode();
 }
-function composerFocused(){return !!document.activeElement?.closest?.('#messaging .m6Composer')}
 function keepComposerVisible(){
   syncViewport();
   const ta=document.querySelector('#messaging .m6Composer textarea');
   if(!ta||document.activeElement!==ta)return;
   requestAnimationFrame(()=>{
-    document.querySelector('#messaging .m6Messages')?.scrollTo?.({top:document.querySelector('#messaging .m6Messages')?.scrollHeight||0,behavior:'auto'});
+    const list=document.querySelector('#messaging .m6Messages');
+    if(list)list.scrollTop=list.scrollHeight;
   });
 }
 syncViewport();
@@ -30,16 +33,15 @@ document.addEventListener('focusin',e=>{
   baseTop=window.scrollY||0;
   document.body.classList.add('m6KeyboardOpen');
   keepComposerVisible();
-  setTimeout(keepComposerVisible,60);
-  setTimeout(keepComposerVisible,180);
-  setTimeout(keepComposerVisible,360);
+  setTimeout(keepComposerVisible,60);setTimeout(keepComposerVisible,180);setTimeout(keepComposerVisible,360);
 },true);
 document.addEventListener('focusout',e=>{
   if(!e.target?.closest?.('#messaging .m6Composer'))return;
   document.body.classList.remove('m6KeyboardOpen');
   setTimeout(()=>{syncViewport();if(window.scrollY!==baseTop)window.scrollTo(0,baseTop)},120);
 },true);
-const s=document.createElement('style');s.id='messagingPolishV7Style';s.textContent=`
+let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;syncMode()})}).observe(document.getElementById('appShell')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+const s=document.createElement('style');s.id='messagingPolishV8Style';s.textContent=`
 @media(min-width:701px){
   #messaging.view.active{position:relative!important;left:50%!important;transform:translateX(-50%)!important;width:calc(100vw - 48px)!important;max-width:none!important;margin:0!important;padding:0!important}
   #messaging .m6Shell{width:100%!important;max-width:none!important;height:calc(100dvh - 118px)!important;min-height:560px!important;margin:0!important;border-radius:22px!important}
@@ -56,10 +58,11 @@ const s=document.createElement('style');s.id='messagingPolishV7Style';s.textCont
 @media(min-width:1600px){#messaging.view.active{width:calc(100vw - 72px)!important}#messaging .m6Layout{grid-template-columns:clamp(340px,20vw,460px) minmax(0,1fr)!important}}
 @media(max-width:700px){
   html,body{max-width:100%!important;overflow-x:hidden!important}
-  body:has(#messaging.view.active){overflow:hidden!important;overscroll-behavior:none!important}
+  body.m6MessagingActive{overflow:hidden!important;overscroll-behavior:none!important}
+  body.m6MessagingActive #appShell>.top{position:fixed!important;top:var(--m6-vtop,0px)!important;left:0!important;right:0!important;z-index:60!important;display:flex!important;visibility:visible!important;opacity:1!important;transform:none!important}
+  body.m6MessagingActive .bottom{display:none!important}
+  body:not(.m6MessagingActive) .bottom{display:grid!important}
   #messaging.view.active{position:fixed!important;top:calc(var(--m6-vtop,0px) + 72px)!important;left:0!important;right:0!important;bottom:auto!important;transform:none!important;width:100vw!important;height:calc(var(--m6-vh,100dvh) - 72px)!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;z-index:9!important;background:#fff!important}
-  body.m6KeyboardOpen #messaging.view.active{top:var(--m6-vtop,0px)!important;height:var(--m6-vh,100dvh)!important;z-index:50!important}
-  body.m6KeyboardOpen #appShell>.top{visibility:hidden!important;pointer-events:none!important}
   #messaging .m6Shell{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important}
   #messaging .m6Layout{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;overflow:hidden!important}
   #messaging .m6Side{width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
