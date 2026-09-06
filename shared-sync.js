@@ -24,5 +24,6 @@ if(!document.getElementById('moduleIconsUnifiedV8')){const s=document.createElem
 if(!document.getElementById('drawerIconSanitizerV1')){const s=document.createElement('script');s.id='drawerIconSanitizerV1';s.src='./drawer-icon-sanitizer-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('adherentsAdminV2')){const s=document.createElement('script');s.id='adherentsAdminV2';s.src='./adherents-admin-v2.js?v=7';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=3';s.async=true;document.head.appendChild(s)}
-if(!document.getElementById('drawerControllerV3')){const s=document.createElement('script');s.id='drawerControllerV3';s.src='./drawer-controller-v1.js?v=3';s.async=true;document.head.appendChild(s)}
+['drawerControllerV3'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('drawerControllerV4')){const s=document.createElement('script');s.id='drawerControllerV4';s.src='./drawer-controller-v1.js?v=4';s.async=true;document.head.appendChild(s)}
 })();
