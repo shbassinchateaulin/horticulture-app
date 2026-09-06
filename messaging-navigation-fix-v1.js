@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingNavigationFixV7)return;
-window.__horticultureMessagingNavigationFixV7=true;
+if(window.__horticultureMessagingNavigationFixV8)return;
+window.__horticultureMessagingNavigationFixV8=true;
 
 const ROUTE_KEY='horticulture-messaging-route-v1';
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
@@ -11,45 +11,76 @@ let enforcing=false,opening=false,observer=null;
 function wanted(){try{return sessionStorage.getItem(ROUTE_KEY)==='messaging'}catch(_){return false}}
 function setWanted(on){try{on?sessionStorage.setItem(ROUTE_KEY,'messaging'):sessionStorage.removeItem(ROUTE_KEY)}catch(_){}}
 function closeDrawer(){const d=document.getElementById('drawer');if(!d)return;d.classList.remove('open');d.style.removeProperty('display')}
-function cleanViewStyle(v){if(!v)return;v.hidden=false;v.removeAttribute('hidden');v.style.removeProperty('display');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events')}
+function clean(v){if(!v)return;v.hidden=false;v.removeAttribute('hidden');v.style.removeProperty('visibility');v.style.removeProperty('opacity');v.style.removeProperty('pointer-events')}
+
+function hardShow(target){
+  if(!target)return false;
+  enforcing=true;
+  for(const v of views()){
+    const on=v===target;
+    v.classList.toggle('active',on);
+    v.hidden=false;
+    v.removeAttribute('hidden');
+    v.style.setProperty('display',on?'block':'none','important');
+    if(on){
+      v.style.setProperty('visibility','visible','important');
+      v.style.setProperty('opacity','1','important');
+      v.style.setProperty('pointer-events','auto','important');
+    }else{
+      v.style.removeProperty('visibility');
+      v.style.removeProperty('opacity');
+      v.style.setProperty('pointer-events','none','important');
+    }
+  }
+  enforcing=false;
+  return true;
+}
 
 function syncExternalRoute(route){
   const nav=window.HorticultureNavigation;
-  if(!nav)return;
   try{
-    if(route==='messaging'&&typeof nav.openRoute==='function')nav.openRoute('messaging');
-    else if(route==='home'&&typeof nav.openHome==='function')nav.openHome();
-    else if(route==='home'&&typeof nav.home==='function')nav.home();
+    if(route==='messaging'&&typeof nav?.openRoute==='function')nav.openRoute('messaging');
+    else if(route==='home'&&typeof nav?.openHome==='function')nav.openHome();
+    else if(route==='home'&&typeof nav?.home==='function')nav.home();
   }catch(e){console.warn('Synchronisation navigation Messagerie',e)}
 }
 
 function forceMessagingVisible(){
   const m=document.getElementById('messaging');
   if(!m)return false;
-  enforcing=true;
-  views().forEach(v=>v.classList.toggle('active',v===m));
-  cleanViewStyle(m);
+  clean(m);
+  hardShow(m);
   document.body.classList.add('m6MessagingActive','messaging-open');
   closeDrawer();
   window.scrollTo(0,0);
-  enforcing=false;
+  return true;
+}
+
+function forceHomeVisible(){
+  const home=document.getElementById('home');
+  if(!home)return false;
+  clean(home);
+  hardShow(home);
+  const m=document.getElementById('messaging');
+  if(m){
+    m.classList.remove('active');
+    m.style.setProperty('display','none','important');
+    m.style.setProperty('pointer-events','none','important');
+  }
+  document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
+  closeDrawer();
+  window.scrollTo(0,0);
   return true;
 }
 
 function showHome(){
   setWanted(false);
-  const home=document.getElementById('home');
-  if(!home)return false;
-  enforcing=true;
-  const m=document.getElementById('messaging');
-  views().forEach(v=>v.classList.toggle('active',v===home));
-  cleanViewStyle(home);
-  if(m){m.classList.remove('active');m.style.removeProperty('display');m.style.removeProperty('visibility');m.style.removeProperty('opacity');m.style.removeProperty('pointer-events')}
-  document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
-  closeDrawer();
-  window.scrollTo(0,0);
-  enforcing=false;
+  forceHomeVisible();
   syncExternalRoute('home');
+  /* Certains anciens routeurs utilisent une liste de vues créée avant la Messagerie.
+     On réapplique donc explicitement l'état après leur exécution. */
+  requestAnimationFrame(forceHomeVisible);
+  [30,120,350].forEach(ms=>setTimeout(forceHomeVisible,ms));
   return true;
 }
 
@@ -97,7 +128,8 @@ function isLeavingMessaging(el){
 
 document.addEventListener('click',e=>{
   const home=isHomeControl(e.target);
-  if(home&&wanted()){
+  const messagingVisible=document.getElementById('messaging')?.classList.contains('active');
+  if(home&&(wanted()||messagingVisible)){
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();showHome();return;
   }
   const target=isMessagingControl(e.target);
@@ -111,14 +143,24 @@ document.addEventListener('click',e=>{
 },true);
 
 function enforce(){
-  if(!wanted()||enforcing)return;
+  if(enforcing)return;
   const m=document.getElementById('messaging');
-  if(!m||!m.querySelector('.m6Shell')){
-    if(typeof window.HorticultureMessaging?.open==='function')openMessaging();
+  const home=document.getElementById('home');
+  if(wanted()){
+    if(!m||!m.querySelector('.m6Shell')){
+      if(typeof window.HorticultureMessaging?.open==='function')openMessaging();
+      return;
+    }
+    if(!m.classList.contains('active')||getComputedStyle(m).display==='none')forceMessagingVisible();
     return;
   }
-  const active=m.classList.contains('active')&&getComputedStyle(m).display!=='none';
-  if(!active){forceMessagingVisible();syncExternalRoute('messaging')}
+  /* Si l'accueil est actif, la Messagerie ne doit jamais rester rendue dessous. */
+  if(home?.classList.contains('active')&&m){
+    m.classList.remove('active');
+    m.style.setProperty('display','none','important');
+    m.style.setProperty('pointer-events','none','important');
+    document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open');
+  }
 }
 
 function observe(){
@@ -134,12 +176,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('pageshow',enforce);window.addEventListener('focus',enforce);
 setInterval(enforce,400);
 
-['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style','messagingNavigationFixV5Style','messagingNavigationFixV6Style'].forEach(id=>document.getElementById(id)?.remove());
-const style=document.createElement('style');style.id='messagingNavigationFixV7Style';style.textContent=`
+['messagingNavigationFixV1Style','messagingNavigationFixV2Style','messagingNavigationFixV3Style','messagingNavigationFixV4Style','messagingNavigationFixV5Style','messagingNavigationFixV6Style','messagingNavigationFixV7Style'].forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');style.id='messagingNavigationFixV8Style';style.textContent=`
 #messaging .m6Home{width:auto!important;min-width:78px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 11px 8px 7px!important}
 #messaging .m6Home::after{content:'Retour';font-size:12px;font-weight:800;line-height:1;color:currentColor}
 #messaging .m6Home svg{width:18px!important;height:18px!important;flex:0 0 18px!important;stroke-width:1.35!important}
+#home.view.active~#messaging.view{display:none!important;pointer-events:none!important}
 `;
 document.head.appendChild(style);
-window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible,enforce};
+window.HorticultureMessagingNavigation={showHome,openMessaging,forceMessagingVisible,forceHomeVisible,enforce};
 })();
