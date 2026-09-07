@@ -1,0 +1,39 @@
+(()=>{
+'use strict';
+if(window.__horticultureMessagingCallActionsV1)return;
+window.__horticultureMessagingCallActionsV1=true;
+const phone='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8 9 3.2l2.1 5-1.8 1.5a14.7 14.7 0 0 0 5 5l1.5-1.8 5 2.1-.6 2.4a3 3 0 0 1-3.2 2.3C10.4 18.8 5.2 13.6 4.3 7a3 3 0 0 1 2.3-3.2Z"/></svg>';
+const video='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="m16 10 5-3v10l-5-3Z"/></svg>';
+const style=document.createElement('style');
+style.id='messagingCallActionsStyleV1';
+style.textContent=`
+#messaging .m6CallAudio,#messaging .m6CallVideo{width:40px;height:40px;border:0;background:transparent;color:#fff;padding:9px;border-radius:50%;display:grid;place-items:center;flex:0 0 40px}
+#messaging .m6CallAudio:hover,#messaging .m6CallVideo:hover{background:#ffffff18}
+#messaging .m6CallAudio svg,#messaging .m6CallVideo svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:390px){#messaging .m6CallAudio,#messaging .m6CallVideo{width:36px;height:36px;flex-basis:36px;padding:8px}#messaging .m6ChatHead{gap:5px!important;padding-left:6px!important;padding-right:6px!important}}
+`;
+document.head.appendChild(style);
+function notice(kind){
+ const peer=document.querySelector('#messaging .m6Peer b')?.textContent?.trim()||'ce membre';
+ const old=document.querySelector('.m6CallComingSoon');old?.remove();
+ const n=document.createElement('div');n.className='m6CallComingSoon';
+ n.textContent=`${kind==='video'?'Appel vidéo':'Appel audio'} avec ${peer} — fonction en préparation`;
+ Object.assign(n.style,{position:'fixed',left:'50%',bottom:'92px',transform:'translateX(-50%)',zIndex:'100000',background:'#173126',color:'#fff',padding:'10px 14px',borderRadius:'12px',fontSize:'13px',fontWeight:'800',boxShadow:'0 8px 24px #0003',maxWidth:'90vw',textAlign:'center'});
+ document.body.appendChild(n);setTimeout(()=>n.remove(),2200);
+}
+function apply(){
+ const head=document.querySelector('#messaging .m6ChatHead');if(!head)return;
+ if(!head.querySelector('.m6CallAudio')){
+   const b=document.createElement('button');b.type='button';b.className='m6HeadBtn m6CallAudio';b.title='Appel audio';b.setAttribute('aria-label','Appel audio');b.innerHTML=phone;b.onclick=()=>notice('audio');
+   const info=head.querySelector('.m6HeadBtn');head.insertBefore(b,info||null);
+ }
+ if(!head.querySelector('.m6CallVideo')){
+   const b=document.createElement('button');b.type='button';b.className='m6HeadBtn m6CallVideo';b.title='Appel vidéo';b.setAttribute('aria-label','Appel vidéo');b.innerHTML=video;b.onclick=()=>notice('video');
+   const info=[...head.querySelectorAll('.m6HeadBtn')].find(x=>!x.classList.contains('m6CallAudio')&&!x.classList.contains('m6CallVideo'));head.insertBefore(b,info||null);
+ }
+}
+document.addEventListener('click',()=>{requestAnimationFrame(apply);setTimeout(apply,80)},true);
+window.addEventListener('horticulture-users-synced',()=>setTimeout(apply,80));
+[0,150,400,900,1800].forEach(ms=>setTimeout(apply,ms));
+window.HorticultureMessagingCallActions={apply};
+})();
