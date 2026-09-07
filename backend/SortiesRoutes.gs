@@ -6,6 +6,7 @@ function sortiesRouteGet_(a,params){
   return null;
 }
 function sortiesRoutePost_(b){
+  if(b.action==='issueSupabaseMessagingToken'&&typeof supabaseMessagingToken_==='function')return supabaseMessagingToken_(b);
   const mr=typeof messagingRoutePost_==='function'?messagingRoutePost_(b):null;if(mr)return mr;
   const dr=typeof docsRoutePost_==='function'?docsRoutePost_(b):null;if(dr)return dr;
   if(b.action==='syncSortiesHelloAsso')return sortiesAdminSync_();
