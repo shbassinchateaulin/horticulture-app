@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__horticultureDrawerControllerV7)return;
-window.__horticultureDrawerControllerV7=true;
+if(window.__horticultureDrawerControllerV8)return;
+window.__horticultureDrawerControllerV8=true;
 const drawer=()=>document.getElementById('drawer');
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const views=()=>[...document.querySelectorAll('#appShell main.app > .view')];
@@ -17,6 +17,20 @@ function invokeAdherents(){const fn=window.HorticultureAdherents?.open;if(typeof
 function openAdherents(){clearCurrent();close();let tries=0;const run=()=>{tries++;const called=invokeAdherents();if(called){requestAnimationFrame(forceAdherents);setTimeout(forceAdherents,20);setTimeout(forceAdherents,100);setTimeout(forceAdherents,300);return}if(tries<20)setTimeout(run,50)};run();return true}
 function forceMessaging(){const fn=window.HorticultureMessagingNavigation?.forceMessagingVisible;return typeof fn==='function'?!!fn():false}
 function openMessaging(){close();const nav=window.HorticultureMessagingNavigation?.openMessaging;if(typeof nav==='function')return nav();try{return !!window.HorticultureMessaging?.open?.()}catch(e){console.error('Messagerie',e);return false}}
+function logout(){
+  close();neutralizeAG();
+  try{window.HorticultureMessagingAuth?.clear?.()}catch(_){}
+  ['horticulture-admin-session-v1','horticulture-messaging-route-v1'].forEach(k=>{try{sessionStorage.removeItem(k)}catch(_){}});
+  ['horticulture-admin-persistent-session-v1','horticulture-messaging-auth-ticket-v1','horticulture-messaging-route-v1'].forEach(k=>{try{localStorage.removeItem(k)}catch(_){}});
+  document.body.classList.remove('m6MessagingActive','m6KeyboardOpen','messaging-open','agWorkspaceMode');
+  const app=document.getElementById('appShell'),login=document.getElementById('loginScreen');
+  if(app)app.style.display='none';
+  if(login)login.style.display='grid';
+  const status=document.getElementById('status');if(status)status.textContent='';
+  const u=document.getElementById('username'),p=document.getElementById('password');if(u)u.value='';if(p)p.value='';
+  window.scrollTo(0,0);
+  return true;
+}
 function ensureMessagingEntry(){
   const list=drawer()?.querySelector('.dlist');if(!list)return null;
   let btn=[...list.querySelectorAll('button,a')].find(x=>String(x.dataset?.module||'').toLowerCase()==='messaging'||norm(x.textContent).includes('messagerie'));
@@ -26,11 +40,11 @@ function ensureMessagingEntry(){
   if(adherents?.nextSibling)list.insertBefore(btn,adherents.nextSibling);else if(adherents)list.appendChild(btn);else list.prepend(btn);return btn;
 }
 function findHomeTarget(source){const permission=String(source.dataset?.permission||'').toLowerCase(),label=norm(source.textContent);const candidates=[...document.querySelectorAll('#home button,.dashTile,.space')];let target=null;if(permission)target=candidates.find(b=>String(b.dataset?.permission||'').toLowerCase()===permission);if(!target)target=candidates.find(b=>{const t=norm(b.textContent),h=norm(b.querySelector('b')?.textContent);return t===label||h===label||t.startsWith(label)||label.startsWith(h)});return target}
-function route(btn){const label=norm(btn.textContent),go=btn.dataset?.go;if(label.includes('accueil')||go==='home')return home();if(label.includes('messagerie')||String(btn.dataset?.permission||'').toLowerCase()==='messaging'||String(btn.dataset?.module||'').toLowerCase()==='messaging')return openMessaging();if(label.includes('adherent')||String(btn.dataset?.permission||'').toLowerCase()==='adherents'||String(btn.dataset?.module||'').toLowerCase()==='adherents')return openAdherents();if(go&&document.getElementById(go))return activate(go);const target=findHomeTarget(btn);if(target){clearCurrent();close();setTimeout(()=>target.click(),0);return true}neutralizeAG();close();return false}
+function route(btn){const label=norm(btn.textContent),go=btn.dataset?.go;if(btn.id==='logout'||label.includes('deconnexion'))return logout();if(label.includes('accueil')||go==='home')return home();if(label.includes('messagerie')||String(btn.dataset?.permission||'').toLowerCase()==='messaging'||String(btn.dataset?.module||'').toLowerCase()==='messaging')return openMessaging();if(label.includes('adherent')||String(btn.dataset?.permission||'').toLowerCase()==='adherents'||String(btn.dataset?.module||'').toLowerCase()==='adherents')return openAdherents();if(go&&document.getElementById(go))return activate(go);const target=findHomeTarget(btn);if(target){clearCurrent();close();setTimeout(()=>target.click(),0);return true}neutralizeAG();close();return false}
 document.addEventListener('click',e=>{const menu=e.target.closest?.('#menu,.menuBtn');if(menu&&menu.closest('#appShell')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();toggle();return}const adh=e.target.closest?.('[data-permission="adherents"],[data-module="adherents"]');if(adh&&adh.closest('#appShell')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openAdherents();return}const d=drawer();if(!d)return;if(e.target===d){e.preventDefault();e.stopImmediatePropagation();close();return}const btn=e.target.closest?.('.dlist button');if(btn&&d.contains(btn)){const handled=route(btn);if(handled){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}}},true);
-['drawer-controller-style-v3','drawer-controller-style-v4','drawer-controller-style-v5','drawer-controller-style-v6'].forEach(id=>document.getElementById(id)?.remove());
-const style=document.createElement('style');style.id='drawer-controller-style-v7';style.textContent='#drawer.open{display:block!important}#appShell main.app>.view:not(.active){display:none!important}';document.head.appendChild(style);
+['drawer-controller-style-v3','drawer-controller-style-v4','drawer-controller-style-v5','drawer-controller-style-v6','drawer-controller-style-v7'].forEach(id=>document.getElementById(id)?.remove());
+const style=document.createElement('style');style.id='drawer-controller-style-v8';style.textContent='#drawer.open{display:block!important}#appShell main.app>.view:not(.active){display:none!important}';document.head.appendChild(style);
 ensureMessagingEntry();[100,400,1200].forEach(ms=>setTimeout(ensureMessagingEntry,ms));window.addEventListener('pageshow',ensureMessagingEntry);window.addEventListener('horticulture-users-synced',()=>setTimeout(ensureMessagingEntry,20));
 if(!document.getElementById('messagingAttachmentsV1')){const s=document.createElement('script');s.id='messagingAttachmentsV1';s.src='./messaging-attachments-v1.js?v=1';s.async=true;document.head.appendChild(s)}
-window.HorticultureDrawer={open,close,toggle,home,activate,openAdherents,forceAdherents,openMessaging,forceMessaging,neutralizeAG,ensureMessagingEntry};
+window.HorticultureDrawer={open,close,toggle,home,activate,openAdherents,forceAdherents,openMessaging,forceMessaging,neutralizeAG,ensureMessagingEntry,logout};
 })();
