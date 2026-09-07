@@ -1,114 +1,15 @@
 (()=>{
 'use strict';
-if(window.__horticultureMessagingInstantCacheV1)return;
-window.__horticultureMessagingInstantCacheV1=true;
-
-const API_PART='/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec';
-const PREFIX='horticulture-msg-cache-v1:';
-const MAX_MESSAGES=120;
-const CACHE_TTL=1000*60*60*24*30;
-const nativeFetch=window.fetch.bind(window);
-let prefetchQueue=[];
-let prefetchRunning=0;
-const PREFETCH_CONCURRENCY=3;
-
-function parseBody(options){
-  try{return JSON.parse(options?.body||'{}')}catch{return null}
-}
-function isMessagingRequest(input,options){
-  const url=typeof input==='string'?input:input?.url||'';
-  if(!url.includes(API_PART))return null;
-  return parseBody(options);
-}
-function key(userId,peerId){return PREFIX+String(userId)+':'+String(peerId)}
-function read(userId,peerId){
-  try{
-    const raw=localStorage.getItem(key(userId,peerId));
-    if(!raw)return null;
-    const data=JSON.parse(raw);
-    if(!data||!Array.isArray(data.messages))return null;
-    if(Date.now()-Number(data.savedAt||0)>CACHE_TTL){localStorage.removeItem(key(userId,peerId));return null}
-    return data;
-  }catch{return null}
-}
-function write(userId,peerId,messages){
-  if(!userId||!peerId||!Array.isArray(messages))return;
-  try{
-    const rows=messages.slice(-MAX_MESSAGES);
-    localStorage.setItem(key(userId,peerId),JSON.stringify({savedAt:Date.now(),messages:rows}));
-  }catch(e){
-    try{
-      Object.keys(localStorage).filter(k=>k.startsWith(PREFIX)).slice(0,10).forEach(k=>localStorage.removeItem(k));
-      localStorage.setItem(key(userId,peerId),JSON.stringify({savedAt:Date.now(),messages:messages.slice(-60)}));
-    }catch(_){ }
-  }
-}
-function responseFor(messages){
-  return new Response(JSON.stringify({ok:true,messages:messages||[]}),{status:200,headers:{'Content-Type':'application/json'}})
-}
-async function networkMessages(userId,peerId){
-  try{
-    const r=await nativeFetch('https://script.google.com'+API_PART,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'listInternalMessages',userId,peerId})});
-    const j=await r.clone().json();
-    if(j?.ok&&Array.isArray(j.messages)){
-      write(userId,peerId,j.messages);
-      window.dispatchEvent(new CustomEvent('horticulture-messages-cache-updated',{detail:{userId,peerId,messages:j.messages}}));
-    }
-  }catch(_){ }
-}
-function pump(){
-  while(prefetchRunning<PREFETCH_CONCURRENCY&&prefetchQueue.length){
-    const job=prefetchQueue.shift();
-    prefetchRunning++;
-    networkMessages(job.userId,job.peerId).finally(()=>{prefetchRunning--;pump()});
-  }
-}
-function queuePrefetch(userId,peers){
-  const seen=new Set(prefetchQueue.map(x=>String(x.userId)+'|'+String(x.peerId)));
-  for(const peerId of peers){
-    if(!peerId||String(peerId)===String(userId))continue;
-    const id=String(userId)+'|'+String(peerId);
-    if(seen.has(id))continue;
-    seen.add(id);
-    prefetchQueue.push({userId:String(userId),peerId:String(peerId)});
-  }
-  pump();
-}
-
-window.fetch=async function(input,options={}){
-  const body=isMessagingRequest(input,options);
-  if(!body)return nativeFetch(input,options);
-
-  if(body.action==='listInternalMessages'&&body.userId&&body.peerId){
-    const cached=read(body.userId,body.peerId);
-    if(cached){
-      networkMessages(body.userId,body.peerId);
-      return responseFor(cached.messages);
-    }
-    const r=await nativeFetch(input,options);
-    try{
-      const j=await r.clone().json();
-      if(j?.ok&&Array.isArray(j.messages))write(body.userId,body.peerId,j.messages);
-    }catch(_){ }
-    return r;
-  }
-
-  const r=await nativeFetch(input,options);
-  if(body.action==='listInternalConversations'&&body.userId){
-    try{
-      const j=await r.clone().json();
-      const peers=(j?.conversations||[]).map(c=>c.otherUserId).filter(Boolean);
-      if(peers.length)setTimeout(()=>queuePrefetch(body.userId,peers),0);
-    }catch(_){ }
-  }
-  if(body.action==='sendInternalMessage'&&body.userId&&body.recipientId){
-    try{localStorage.removeItem(key(body.userId,body.recipientId))}catch(_){ }
-  }
-  return r;
-};
-
-window.HorticultureMessagingInstantCache={
-  read:(userId,peerId)=>read(userId,peerId),
-  prefetch:queuePrefetch
-};
+if(window.__horticultureMessagingInstantCacheV2)return;window.__horticultureMessagingInstantCacheV2=true;
+const API_PART='/macros/s/AKfycbwim8t9oVshwze47JG0KeuvdiE3hqjwM6pXts9KA48HSd-jLOP5A3V2cyfN6nVMSp5H/exec',PREFIX='horticulture-msg-cache-v1:',MAX_MESSAGES=120,CACHE_TTL=2592000000,nativeFetch=window.fetch.bind(window);let q=[],running=0,lastLive=0;const CONCURRENCY=3,LIVE_MS=2500;
+function body(o){try{return JSON.parse(o?.body||'{}')}catch{return null}}function req(i,o){const u=typeof i==='string'?i:i?.url||'';return u.includes(API_PART)?body(o):null}function key(u,p){return PREFIX+u+':'+p}function read(u,p){try{const d=JSON.parse(localStorage.getItem(key(u,p))||'null');if(!d||!Array.isArray(d.messages))return null;if(Date.now()-Number(d.savedAt||0)>CACHE_TTL){localStorage.removeItem(key(u,p));return null}return d}catch{return null}}function write(u,p,m){if(!u||!p||!Array.isArray(m))return;try{localStorage.setItem(key(u,p),JSON.stringify({savedAt:Date.now(),messages:m.slice(-MAX_MESSAGES)}))}catch(_){}}
+function response(m){return new Response(JSON.stringify({ok:true,messages:m||[]}),{status:200,headers:{'Content-Type':'application/json'}})}
+async function network(u,p,notify=true){try{const r=await nativeFetch('https://script.google.com'+API_PART,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'listInternalMessages',userId:u,peerId:p}),cache:'no-store'}),j=await r.clone().json();if(j?.ok&&Array.isArray(j.messages)){const before=read(u,p)?.messages||[];write(u,p,j.messages);if(notify&&JSON.stringify(before)!==JSON.stringify(j.messages))window.dispatchEvent(new CustomEvent('horticulture-messages-cache-updated',{detail:{userId:u,peerId:p,messages:j.messages}}));return j.messages}}catch(_){}return null}
+function pump(){while(running<CONCURRENCY&&q.length){const j=q.shift();running++;network(j.u,j.p,false).finally(()=>{running--;pump()})}}function prefetch(u,ps){const seen=new Set(q.map(x=>x.u+'|'+x.p));ps.forEach(p=>{const k=u+'|'+p;if(p&&String(p)!==String(u)&&!seen.has(k)){seen.add(k);q.push({u:String(u),p:String(p)})}});pump()}
+function session(){try{return JSON.parse(localStorage.getItem('horticulture-admin-persistent-session-v1')||sessionStorage.getItem('horticulture-admin-session-v1')||'null')}catch{return null}}
+function visiblePeer(){const m=document.querySelector('#messaging.active .m6Peer b');if(!m)return null;const users=JSON.parse(localStorage.getItem('horticulture-admin-users-v2')||'[]'),n=m.textContent.trim();return users.find(x=>[x.firstName,x.lastName].filter(Boolean).join(' ')===n)?.id||null}
+window.fetch=async function(input,options={}){const b=req(input,options);if(!b)return nativeFetch(input,options);if(b.action==='listInternalMessages'&&b.userId&&b.peerId){const c=read(b.userId,b.peerId);if(c){network(b.userId,b.peerId,true);return response(c.messages)}const r=await nativeFetch(input,options);try{const j=await r.clone().json();if(j?.ok&&Array.isArray(j.messages))write(b.userId,b.peerId,j.messages)}catch(_){}return r}if(b.action==='sendInternalMessage'&&b.userId&&b.recipientId&&b.text){const old=read(b.userId,b.recipientId)?.messages||[],optimistic={senderId:String(b.userId),recipientId:String(b.recipientId),text:String(b.text),createdAt:new Date().toISOString(),__pending:true};write(b.userId,b.recipientId,[...old,optimistic]);window.dispatchEvent(new CustomEvent('horticulture-messages-cache-updated',{detail:{userId:b.userId,peerId:b.recipientId,messages:[...old,optimistic]}}));const r=await nativeFetch(input,options);try{const j=await r.clone().json();if(j?.ok)setTimeout(()=>network(b.userId,b.recipientId,true),0)}catch(_){}return r}const r=await nativeFetch(input,options);if(b.action==='listInternalConversations'&&b.userId)try{const j=await r.clone().json(),ps=(j?.conversations||[]).map(c=>c.otherUserId).filter(Boolean);if(ps.length)setTimeout(()=>prefetch(b.userId,ps),0)}catch(_){}return r};
+setInterval(()=>{if(document.hidden)return;const s=session(),p=visiblePeer();if(!s?.id||!p)return;if(Date.now()-lastLive<LIVE_MS-100)return;lastLive=Date.now();network(String(s.id),String(p),true)},LIVE_MS);
+window.addEventListener('horticulture-messages-cache-updated',e=>{const s=session(),p=visiblePeer();if(!s?.id||!p||String(e.detail?.userId)!==String(s.id)||String(e.detail?.peerId)!==String(p))return;const box=document.querySelector('#messaging .m6Messages');if(!box)return;const rows=e.detail.messages||[];box.innerHTML='<div class="m6Day">Aujourd’hui</div>'+((rows.length)?rows.map(m=>`<div class="m6Bubble ${String(m.senderId)===String(s.id)?'mine':''}${m.__pending?' m6Pending':''}">${String(m.text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}<small>${new Date(m.createdAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}${String(m.senderId)===String(s.id)?`<span class="m6Checks">${m.__pending?'✓':'✓✓'}</span>`:''}</small></div>`).join(''):'<div class="m6Empty">Écrivez le premier message.</div>');box.scrollTop=box.scrollHeight});
+window.HorticultureMessagingInstantCache={read,prefetch};
 })();
