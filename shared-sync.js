@@ -24,20 +24,18 @@ if(!document.getElementById('messagingSupabaseTransportV3')){['messagingSupabase
 if(!document.getElementById('messagingGroupsV1')){const s=document.createElement('script');s.id='messagingGroupsV1';s.src='./messaging-groups-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingInstantCacheV3')){['messagingInstantCacheV1','messagingInstantCacheV2'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingInstantCacheV3';s.src='./messaging-instant-cache-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingV6')){['messagingV1','messagingV2','messagingV3','messagingV4','messagingV5'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingV6';s.src='./messaging-v6.js?v=1';s.async=false;document.head.appendChild(s)}
-['messagingCallActionsV1','messagingCallActionsV2','messagingCallActionsV3'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingDeviceSyncV1')){const s=document.createElement('script');s.id='messagingDeviceSyncV1';s.src='./messaging-device-sync-fix-v1.js?v=1';s.async=false;document.head.appendChild(s)}
-['messagingMessageActionsV1','messagingMessageActionsV2'].forEach(id=>document.getElementById(id)?.remove());
-if(!document.getElementById('messagingMessageActionsV3')){const s=document.createElement('script');s.id='messagingMessageActionsV3';s.src='./messaging-message-actions-v1.js?v=3';s.async=false;document.head.appendChild(s)}
-if(!document.getElementById('messagingReplyWallpaperV1')){const s=document.createElement('script');s.id='messagingReplyWallpaperV1';s.src='./messaging-reply-wallpaper-v1.js?v=1';s.async=false;document.head.appendChild(s)}
+['messagingMessageActionsV1','messagingMessageActionsV2','messagingMessageActionsV3'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('messagingMessageActionsV4')){const s=document.createElement('script');s.id='messagingMessageActionsV4';s.src='./messaging-message-actions-v1.js?v=4';s.async=false;document.head.appendChild(s)}
+['messagingReplyWallpaperV1','messagingReplyWallpaperV2'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('messagingReplyWallpaperV3')){const s=document.createElement('script');s.id='messagingReplyWallpaperV3';s.src='./messaging-reply-wallpaper-v1.js?v=3';s.async=false;document.head.appendChild(s)}
+if(!document.getElementById('messagingHardDeleteV1')){const s=document.createElement('script');s.id='messagingHardDeleteV1';s.src='./messaging-hard-delete-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 ['messagingNativeCallsV1','messagingNativeCallsV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingNativeCallsV3')){const s=document.createElement('script');s.id='messagingNativeCallsV3';s.src='./messaging-native-calls-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingPolishV13')){['messagingPolishV1','messagingPolishV2','messagingPolishV3','messagingPolishV4','messagingPolishV5','messagingPolishV6','messagingPolishV7','messagingPolishV8','messagingPolishV9','messagingPolishV10','messagingPolishV11','messagingPolishV12'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingPolishV13';s.src='./messaging-polish-v1.js?v=13';s.async=false;document.head.appendChild(s)}
-['messagingLogoV1','messagingLogoV2','messagingLogoV3','messagingBrandFinalV1','messagingBrandFinalV2','messagingBrandFinalV3','moduleIconsUnifiedV1','moduleIconsUnifiedV2','moduleIconsUnifiedV3','moduleIconsUnifiedV4','moduleIconsUnifiedV5','moduleIconsUnifiedV6','moduleIconsUnifiedV7'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('moduleIconsUnifiedV8')){const s=document.createElement('script');s.id='moduleIconsUnifiedV8';s.src='./module-icons-unified-v1.js?v=8';s.async=false;document.head.appendChild(s)}
-['drawerIconSanitizerV1','drawerIconsSanitizeV1','drawerIconsSanitizeV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('drawerIconsSanitizeV3')){const s=document.createElement('script');s.id='drawerIconsSanitizeV3';s.src='./drawer-icons-sanitize-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('adherentsAdminV2')){const s=document.createElement('script');s.id='adherentsAdminV2';s.src='./adherents-admin-v2.js?v=7';s.async=true;document.head.appendChild(s)}
 if(!document.getElementById('adherentsImportReviewV1')){const s=document.createElement('script');s.id='adherentsImportReviewV1';s.src='./adherents-import-review-v1.js?v=3';s.async=true;document.head.appendChild(s)}
-['drawerControllerV3','drawerControllerV4','drawerControllerV5','drawerControllerV6'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('drawerControllerV7')){const s=document.createElement('script');s.id='drawerControllerV7';s.src='./drawer-controller-v1.js?v=7';s.async=true;document.head.appendChild(s)}
 })();
