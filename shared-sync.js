@@ -30,8 +30,8 @@ if(!document.getElementById('messagingMessageActionsV4')){const s=document.creat
 ['messagingReplyWallpaperV1','messagingReplyWallpaperV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingReplyWallpaperV3')){const s=document.createElement('script');s.id='messagingReplyWallpaperV3';s.src='./messaging-reply-wallpaper-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingHardDeleteV1')){const s=document.createElement('script');s.id='messagingHardDeleteV1';s.src='./messaging-hard-delete-v1.js?v=1';s.async=false;document.head.appendChild(s)}
-['messagingDaySeparatorsV1'].forEach(id=>document.getElementById(id)?.remove());
-if(!document.getElementById('messagingDaySeparatorsV2')){const s=document.createElement('script');s.id='messagingDaySeparatorsV2';s.src='./messaging-day-separators-v1.js?v=2';s.async=false;document.head.appendChild(s)}
+['messagingDaySeparatorsV1','messagingDaySeparatorsV2'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('messagingDaySeparatorsV3')){const s=document.createElement('script');s.id='messagingDaySeparatorsV3';s.src='./messaging-day-separators-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 ['messagingNativeCallsV1','messagingNativeCallsV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingNativeCallsV3')){const s=document.createElement('script');s.id='messagingNativeCallsV3';s.src='./messaging-native-calls-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 ['messagingPolishV1','messagingPolishV2','messagingPolishV3','messagingPolishV4','messagingPolishV5','messagingPolishV6','messagingPolishV7','messagingPolishV8','messagingPolishV9','messagingPolishV10','messagingPolishV11','messagingPolishV12','messagingPolishV13'].forEach(id=>document.getElementById(id)?.remove());
