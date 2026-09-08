@@ -23,6 +23,7 @@ if(!document.getElementById('messagingSupabaseV3')){['messagingSupabaseV1','mess
 if(!document.getElementById('messagingSupabaseTransportV3')){['messagingSupabaseTransportV1','messagingSupabaseTransportV2'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingSupabaseTransportV3';s.src='./messaging-supabase-transport-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingGroupsV1')){const s=document.createElement('script');s.id='messagingGroupsV1';s.src='./messaging-groups-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingInstantCacheV3')){['messagingInstantCacheV1','messagingInstantCacheV2'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingInstantCacheV3';s.src='./messaging-instant-cache-v1.js?v=3';s.async=false;document.head.appendChild(s)}
+if(!document.getElementById('messagingNoPollingV1')){const s=document.createElement('script');s.id='messagingNoPollingV1';s.src='./messaging-no-polling-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingV6')){['messagingV1','messagingV2','messagingV3','messagingV4','messagingV5'].forEach(id=>document.getElementById(id)?.remove());const s=document.createElement('script');s.id='messagingV6';s.src='./messaging-v6.js?v=1';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingDeviceSyncV1')){const s=document.createElement('script');s.id='messagingDeviceSyncV1';s.src='./messaging-device-sync-fix-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 ['messagingMessageActionsV1','messagingMessageActionsV2','messagingMessageActionsV3'].forEach(id=>document.getElementById(id)?.remove());
@@ -30,8 +31,8 @@ if(!document.getElementById('messagingMessageActionsV4')){const s=document.creat
 ['messagingReplyWallpaperV1','messagingReplyWallpaperV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingReplyWallpaperV3')){const s=document.createElement('script');s.id='messagingReplyWallpaperV3';s.src='./messaging-reply-wallpaper-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 if(!document.getElementById('messagingHardDeleteV1')){const s=document.createElement('script');s.id='messagingHardDeleteV1';s.src='./messaging-hard-delete-v1.js?v=1';s.async=false;document.head.appendChild(s)}
-['messagingDaySeparatorsV1','messagingDaySeparatorsV2'].forEach(id=>document.getElementById(id)?.remove());
-if(!document.getElementById('messagingDaySeparatorsV3')){const s=document.createElement('script');s.id='messagingDaySeparatorsV3';s.src='./messaging-day-separators-v1.js?v=3';s.async=false;document.head.appendChild(s)}
+['messagingDaySeparatorsV1','messagingDaySeparatorsV2','messagingDaySeparatorsV3'].forEach(id=>document.getElementById(id)?.remove());
+if(!document.getElementById('messagingDaySeparatorsV4')){const s=document.createElement('script');s.id='messagingDaySeparatorsV4';s.src='./messaging-day-separators-v1.js?v=4';s.async=false;document.head.appendChild(s)}
 ['messagingNativeCallsV1','messagingNativeCallsV2'].forEach(id=>document.getElementById(id)?.remove());
 if(!document.getElementById('messagingNativeCallsV3')){const s=document.createElement('script');s.id='messagingNativeCallsV3';s.src='./messaging-native-calls-v1.js?v=3';s.async=false;document.head.appendChild(s)}
 ['messagingPolishV1','messagingPolishV2','messagingPolishV3','messagingPolishV4','messagingPolishV5','messagingPolishV6','messagingPolishV7','messagingPolishV8','messagingPolishV9','messagingPolishV10','messagingPolishV11','messagingPolishV12','messagingPolishV13'].forEach(id=>document.getElementById(id)?.remove());
