@@ -12,4 +12,5 @@ window.setInterval=function(fn,delay,...args){
   }catch(_){ }
   return native(fn,delay,...args);
 };
+if(!document.getElementById('messagingConversationActionsV1')){const s=document.createElement('script');s.id='messagingConversationActionsV1';s.src='./messaging-conversation-actions-v1.js?v=1';s.async=false;document.head.appendChild(s)}
 })();
