@@ -1,0 +1,12 @@
+(()=>{
+'use strict';
+if(window.__horticultureCallHistoryV1)return;window.__horticultureCallHistoryV1=true;
+const RE=/^\[\[HORTI_CALL_V1:(\{.*\})\]\]$/s;
+const phone='<svg viewBox="0 0 24 24"><path d="M6.6 3.8 9 3.2l2.1 5-1.8 1.5a14.7 14.7 0 0 0 5 5l1.5-1.8 5 2.1-.6 2.4a3 3 0 0 1-3.2 2.3C10.4 18.8 5.2 13.6 4.3 7a3 3 0 0 1 2.3-3.2Z"/></svg>';
+const video='<svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="m16 10 5-3v10l-5-3Z"/></svg>';
+function fmt(n){n=Math.max(0,Number(n)||0);if(n<60)return n+' s';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return h?(h+' h '+String(m).padStart(2,'0')+' min'):(m+' min '+String(s).padStart(2,'0')+' s')}
+function parse(t){const m=String(t||'').trim().match(RE);if(!m)return null;try{return JSON.parse(m[1])}catch{return null}}
+function enhance(){document.querySelectorAll('#messaging .m6Bubble').forEach(b=>{if(b.dataset.hortiCall==='1')return;const nodes=[...b.childNodes];let raw='';for(const n of nodes){if(n.nodeType===3)raw+=n.textContent;else if(n.nodeType===1&&!n.matches('small'))raw+=n.textContent}const d=parse(raw);if(!d)return;b.dataset.hortiCall='1';const sm=b.querySelector('small')?.cloneNode(true);b.innerHTML=`<div class="hortiCallEvent"><span>${d.mode==='video'?video:phone}</span><div><b>${d.mode==='video'?'Appel vidéo':'Appel audio'}</b><small>${d.answered?'Durée : '+fmt(d.durationSeconds):'Sans réponse'}</small></div></div>`;if(sm)b.appendChild(sm)})}
+function style(){if(document.getElementById('hortiCallHistoryStyle'))return;const s=document.createElement('style');s.id='hortiCallHistoryStyle';s.textContent='.hortiCallEvent{display:flex;align-items:center;gap:10px;min-width:165px}.hortiCallEvent>span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#0b7b5720;color:#07583f;padding:8px}.hortiCallEvent svg{width:18px!important;height:18px!important}.hortiCallEvent b{display:block;font-size:13px}.hortiCallEvent div small{display:block!important;text-align:left!important;margin-top:2px!important;font-size:10px!important}';document.head.appendChild(s)}
+style();new MutationObserver(()=>requestAnimationFrame(enhance)).observe(document.documentElement,{subtree:true,childList:true});[0,100,500].forEach(x=>setTimeout(enhance,x));
+})();
