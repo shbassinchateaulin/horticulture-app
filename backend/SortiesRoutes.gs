@@ -3,6 +3,7 @@
 function sortiesRouteGet_(a,params){
   if(a==='listSortiesAdmin')return sortiesAdminList_();
   if(a==='listSortieAttendance')return sortiesAttendanceList_(params&&params.sortieId||'');
+  if(a==='listPublicPublications'&&typeof publicationListPublic_==='function')return publicationListPublic_();
   return null;
 }
 function sortiesRoutePost_(b){
@@ -21,6 +22,8 @@ function sortiesRoutePost_(b){
   if(b.action==='importSortieParticipantsAI')return sortiesImportAiSave_(b.sortieId||'',b.payload||{});
   if(b.action==='generateSortieDescriptionAI')return sortiesGenerateDescriptionAI_(b.sortie||{});
   if(b.action==='generatePublicationAI'&&typeof publicationGenerateAI_==='function')return publicationGenerateAI_(b.publication||{});
+  if(b.action==='savePublicPublication'&&typeof publicationSavePublic_==='function')return publicationSavePublic_(b.publication||{});
+  if(b.action==='deletePublicPublication'&&typeof publicationDeletePublic_==='function')return publicationDeletePublic_(b.id||'');
   if(b.action==='createSortieHelloAsso')return sortiesCreateHelloAssoSafe_(b.sortie||{});
   if(b.action==='syncSortieCapacity')return sortiesHelloAssoApplyRemaining_(b.sortieId||'');
   return null;
