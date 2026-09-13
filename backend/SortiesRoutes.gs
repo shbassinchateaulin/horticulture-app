@@ -20,6 +20,7 @@ function sortiesRoutePost_(b){
   if(b.action==='setSortieAttendance')return sortiesAttendanceSet_(b.sortieId||'',b.participantId||'',b.status||'pending');
   if(b.action==='importSortieParticipantsAI')return sortiesImportAiSave_(b.sortieId||'',b.payload||{});
   if(b.action==='generateSortieDescriptionAI')return sortiesGenerateDescriptionAI_(b.sortie||{});
+  if(b.action==='generatePublicationAI'&&typeof publicationGenerateAI_==='function')return publicationGenerateAI_(b.publication||{});
   if(b.action==='createSortieHelloAsso')return sortiesCreateHelloAssoSafe_(b.sortie||{});
   if(b.action==='syncSortieCapacity')return sortiesHelloAssoApplyRemaining_(b.sortieId||'');
   return null;
