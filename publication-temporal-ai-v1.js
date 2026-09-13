@@ -77,7 +77,20 @@ function addNewsDateField(){
   field.innerHTML='<label>Date / heure de l’événement <span style="font-weight:500;color:#78857e">(facultatif)</span></label><input name="date" type="datetime-local" value="'+String(draft.date||'').slice(0,16)+'"><div class="p4Lead" style="margin:6px 0 0">Si vous la renseignez, l’IA saura automatiquement s’il faut annoncer un événement à venir ou raconter un événement passé.</div>';
   const textField=text.closest('.p4Field');textField?.insertAdjacentElement('afterend',field);
 }
-let timer=0;function refresh(){clearTimeout(timer);timer=setTimeout(addNewsDateField,20)}
+function applyTemporalUI(){
+  const root=document.querySelector('#publish.pubV4');if(!root)return;
+  const draft=readDraft();if(!draft)return;
+  const state=temporalInfo(draft.date).status;
+  root.dataset.temporalStatus=state;
+  if(draft.type==='sortie'&&state==='past'){
+    root.querySelectorAll('.p4Cta').forEach(x=>x.remove());
+    root.querySelectorAll('.p4IndexText').forEach(box=>{
+      if(box.querySelector('[data-past-event-note]'))return;
+      const note=document.createElement('div');note.dataset.pastEventNote='1';note.className='p4Meta';note.style.marginTop='10px';note.textContent='Sortie terminée';box.appendChild(note);
+    });
+  }
+}
+let timer=0;function refresh(){clearTimeout(timer);timer=setTimeout(()=>{addNewsDateField();applyTemporalUI()},20)}
 new MutationObserver(refresh).observe(document.documentElement,{childList:true,subtree:true});
 document.addEventListener('focusin',refresh);refresh();
 })();
