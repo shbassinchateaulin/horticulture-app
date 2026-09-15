@@ -1,1 +1,1 @@
-(()=>{'use strict';if(window.__publicationV5Loader)return;window.__publicationV5Loader=1;const s=document.createElement('script');s.src='./publication-design-v5.js?v=5';s.defer=true;document.head.appendChild(s);})();
+(()=>{'use strict';if(window.__publicationV6Loader)return;window.__publicationV6Loader=1;const css=document.createElement('link');css.rel='stylesheet';css.href='./publication-design-v6.css?v=6';document.head.appendChild(css);const js=document.createElement('script');js.src='./publication-design-v6.js?v=6';js.defer=true;document.head.appendChild(js);})();
