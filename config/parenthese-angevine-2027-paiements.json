@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "sortie": "Parenthèse angevine",
+  "year": 2027,
+  "timezone": "Europe/Paris",
+  "currency": "EUR",
+  "installments": [
+    {
+      "number": 1,
+      "trigger": "registration",
+      "amountCents": 13000
+    },
+    {
+      "number": 2,
+      "sendDate": "2027-01-14",
+      "dueDate": "2027-01-22",
+      "amountCents": 13000
+    },
+    {
+      "number": 3,
+      "sendDate": "2027-03-14",
+      "dueDate": "2027-03-22",
+      "amountCents": 13000
+    },
+    {
+      "number": 4,
+      "sendDate": "2027-05-14",
+      "dueDate": "2027-05-22",
+      "amount": "validated_total_minus_confirmed_payments"
+    }
+  ],
+  "associationPricing": {
+    "requestDate": "2027-05-07",
+    "reminderDate": "2027-05-12",
+    "skipWhenAlreadyValidated": true,
+    "requiredFields": [
+      "memberTotalCents",
+      "nonMemberTotalCents"
+    ],
+    "blockFinalPaymentEmailsUntilValidated": true
+  },
+  "participantReminder": {
+    "daysBeforeDue": 2,
+    "onlyIfUnpaid": true
+  },
+  "rules": {
+    "skipInstallments2And3If390AlreadyPaid": true,
+    "doNotSendIfPaid": true,
+    "neverSendDuplicate": true,
+    "calculateFromConfirmedPayments": true,
+    "onePaymentRequestPerPersonAndInstallment": true,
+    "requireAuthenticatedAdmin": true,
+    "storePersonalDataOnlyInPrivateBackend": true
+  },
+  "helloAsso": {
+    "eventUrl": "https://www.helloasso.com/associations/societe-d-horticulture-du-bassin-de-chateaulin/evenements/parenthese-angevine",
+    "personalPaymentLink": "generate_on_demand_via_secure_backend"
+  },
+  "integrationStatus": "configuration_only_backend_helloasso_email_not_connected"
+}
