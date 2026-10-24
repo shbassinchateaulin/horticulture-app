@@ -1,0 +1,42 @@
+/* Administration-wide visual refresh based on apple.design(2).md.
+   Presentation only: no change to authentication, routing, permissions or publication. */
+:root{--apple-blue:#0066cc;--apple-blue-focus:#0071e3;--apple-ink:#1d1d1f;--apple-muted:#6e6e73;--apple-bg:#f5f5f7;--apple-line:#e0e0e0;--apple-white:#fff}
+html:not(.appDark){--g:#1d1d1f;--g2:#0066cc;--bg:#f5f5f7;--card:#fff;--txt:#1d1d1f;--mut:#6e6e73;--line:#e0e0e0}
+html:not(.appDark) body{background:var(--apple-bg);color:var(--apple-ink);font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-size:17px;line-height:1.47;-webkit-font-smoothing:antialiased}
+html:not(.appDark) h1,html:not(.appDark) h2,html:not(.appDark) h3,html:not(.appDark) .name{font-family:"SF Pro Display",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-weight:600;letter-spacing:-.025em;color:var(--apple-ink)}
+html:not(.appDark) .sm,html:not(.appDark) small,html:not(.appDark) .sub,html:not(.appDark) .hello{color:var(--apple-muted)}
+html:not(.appDark) .top{background:#fff;color:var(--apple-ink);border-bottom:1px solid var(--apple-line);box-shadow:none}
+html:not(.appDark) .top button{background:var(--apple-bg);color:var(--apple-ink);border-radius:50%}
+html:not(.appDark) .app{max-width:1180px}
+html:not(.appDark) .card,html:not(.appDark) .page,html:not(.appDark) .space,html:not(.appDark) .draft,html:not(.appDark) .userCard,html:not(.appDark) .userCard2,html:not(.appDark) .formCard,html:not(.appDark) .dashTile{background:#fff;border:1px solid var(--apple-line);border-radius:18px;box-shadow:none}
+html:not(.appDark) .dashTile,html:not(.appDark) .space{transition:background .15s,transform .15s,border-color .15s}
+html:not(.appDark) .dashTile:hover,html:not(.appDark) .space:hover{background:#fafafc;border-color:#c6c6c9}
+html:not(.appDark) .dashTile:active,html:not(.appDark) .space:active{transform:scale(.985)}
+html:not(.appDark) .ico,html:not(.appDark) .dashIcon,html:not(.appDark) .draftI,html:not(.appDark) .avatar,html:not(.appDark) .avatar2{background:var(--apple-bg);color:var(--apple-blue);box-shadow:none}
+html:not(.appDark) .chip{background:#eaf3ff;color:var(--apple-blue);font-weight:600}
+html:not(.appDark) .primary,html:not(.appDark) .connect,html:not(.appDark) .plus{background:var(--apple-blue);border-color:var(--apple-blue);color:#fff;box-shadow:none}
+html:not(.appDark) .primary,html:not(.appDark) .connect,html:not(.appDark) .miniBtn,html:not(.appDark) .forgot,html:not(.appDark) .previewAdmin{border-radius:9999px;font-weight:600}
+html:not(.appDark) .connect{background:var(--apple-blue);background-image:none}
+html:not(.appDark) button{transition:transform .12s ease,background-color .15s ease}
+html:not(.appDark) button:active:not(:disabled){transform:scale(.95)}
+html:not(.appDark) button:focus-visible,html:not(.appDark) a:focus-visible,html:not(.appDark) input:focus-visible,html:not(.appDark) select:focus-visible,html:not(.appDark) textarea:focus-visible{outline:2px solid var(--apple-blue-focus);outline-offset:2px}
+html:not(.appDark) .field input,html:not(.appDark) .page input,html:not(.appDark) .page textarea,html:not(.appDark) .page select,html:not(.appDark) .formCard input,html:not(.appDark) .formCard select{background:#fff;border:1px solid var(--apple-line);border-radius:11px;color:var(--apple-ink);font-size:16px;box-shadow:none}
+html:not(.appDark) .field label,html:not(.appDark) .page label,html:not(.appDark) .formCard label{font-weight:600;color:var(--apple-ink)}
+html:not(.appDark) .back,html:not(.appDark) .forgot{color:var(--apple-blue)}
+html:not(.appDark) .bottom{background:rgba(245,245,247,.88);border-top:1px solid var(--apple-line);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);box-shadow:none}
+html:not(.appDark) .nav{color:var(--apple-muted)}
+html:not(.appDark) .nav.active{color:var(--apple-blue)}
+html:not(.appDark) .drawer .panel{background:#fff;color:var(--apple-ink)}
+html:not(.appDark) .dhead{background:#f5f5f7;color:var(--apple-ink)}
+html:not(.appDark) .dlist button{border-radius:11px}
+html:not(.appDark) .note,html:not(.appDark) .generated,html:not(.appDark) .accessInfo{background:var(--apple-bg);border-color:var(--apple-line)}
+html:not(.appDark) .head h1{color:var(--apple-ink);font-weight:600}
+html:not(.appDark) .logo{filter:none}
+html:not(.appDark) .brand{background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.18)),url('https://images.unsplash.com/photo-1696507560112-f61a39a34197?auto=format&fit=crop&w=1400&q=88') center/cover no-repeat}
+html:not(.appDark) .brand h2{color:#fff}
+html:not(.appDark) .brand h3{color:#e7e7e7}
+html:not(.appDark) .brandLine{background:#fff}
+html:not(.appDark) .statusOk,html:not(.appDark) .pill.ok{background:#eaf3ff;color:var(--apple-blue)}
+html:not(.appDark) .setRow,html:not(.appDark) .accessWrap{box-shadow:none}
+@media(max-width:700px){html:not(.appDark) .app{padding:20px 16px 110px}html:not(.appDark) .page{border-radius:16px}html:not(.appDark) .dashTile{border-radius:16px}}
+@media(prefers-reduced-motion:reduce){html:not(.appDark) button,html:not(.appDark) .dashTile,html:not(.appDark) .space{transition:none}}
