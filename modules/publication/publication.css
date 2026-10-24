@@ -61,3 +61,47 @@ textarea{min-height:180px}
 footer{border-color:var(--pub-line);padding:22px 48px;background:#fff}
 #status{color:var(--pub-muted);line-height:1.4}
 @media(max-width:700px){.shell{margin:0;border:0;border-radius:0;min-height:100dvh}header{padding:26px 20px 18px;gap:10px}header p{font-size:14px}header .secondary{padding:9px 12px;font-size:13px}#editor{padding:24px 20px 32px}#steps{padding:19px 12px 23px}.choice-grid,.mode-grid{grid-template-columns:1fr;gap:12px}.choice-card{min-height:0;padding:23px}.choice-card strong{font-size:21px}footer{position:sticky;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));gap:9px}footer button{padding:11px 14px;font-size:14px}#status{font-size:10px;max-width:130px}h1{font-size:30px}}
+
+
+/* Apple DESIGN.md (2) — exact token-driven publication skin */
+:root{--apple-blue:#0066cc;--apple-focus:#0071e3;--apple-ink:#1d1d1f;--apple-muted:#7a7a7a;--apple-canvas:#fff;--apple-parchment:#f5f5f7;--apple-pearl:#fafafc;--apple-hairline:#e0e0e0}
+body{background:var(--apple-parchment);color:var(--apple-ink);font-family:"SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-size:17px;font-weight:400;line-height:1.47;letter-spacing:-.374px}
+.shell{background:var(--apple-canvas);box-shadow:none;border:0;border-radius:0;max-width:1050px;margin:24px auto 40px}
+header{padding:48px 48px 32px}
+.eyebrow{color:var(--apple-muted);font-size:12px;letter-spacing:-.12px;font-weight:400}
+h1,h2,.intro h2{font-family:"SF Pro Display",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-weight:600;color:var(--apple-ink);letter-spacing:-.374px}
+h1{font-size:40px;line-height:1.1}
+h2,.intro h2{font-size:28px;line-height:1.14}
+p,header p,.intro p{font-size:17px;line-height:1.47;color:#333;letter-spacing:-.374px}
+button{font-family:"SF Pro Text",system-ui,-apple-system,sans-serif;font-size:17px;font-weight:400;border-radius:9999px;border:1px solid var(--apple-blue);background:#fff;color:var(--apple-blue);padding:11px 22px;box-shadow:none;transition:transform .12s ease,background-color .12s ease}
+button:hover:not(:disabled){background:var(--apple-pearl);border-color:var(--apple-blue)}
+button:active:not(:disabled){transform:scale(.95)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--apple-focus);outline-offset:2px}
+button.active,.primary{background:var(--apple-blue);border-color:var(--apple-blue);color:white}
+button.active:hover:not(:disabled),.primary:hover:not(:disabled){background:var(--apple-blue);border-color:var(--apple-blue)}
+button:disabled{opacity:.48}
+#steps{background:var(--apple-parchment);border:0;padding:24px 32px 28px}
+#steps .step-circle{background:#fff;color:var(--apple-muted);border-color:var(--apple-hairline);box-shadow:none;font-weight:600}
+#steps .step-item.current .step-circle{background:var(--apple-blue);border-color:var(--apple-blue);color:#fff;box-shadow:none}
+#steps .step-item.completed .step-circle{background:#eaf3ff;border-color:var(--apple-blue);color:var(--apple-blue)}
+#steps .step-item.current .step-label,#steps .step-item.completed .step-label{color:var(--apple-blue)}
+#steps .step-line{background:var(--apple-hairline)}
+#steps .step-line.done{background:var(--apple-blue)}
+#editor{padding:40px 48px 56px}
+label{font-size:14px;font-weight:600;letter-spacing:-.224px;color:var(--apple-ink)}
+input,textarea,select{font-family:"SF Pro Text",system-ui,-apple-system,sans-serif;font-size:17px;font-weight:400;line-height:1.47;letter-spacing:-.374px;color:var(--apple-ink);background:#fff;border:1px solid var(--apple-hairline);border-radius:11px;box-shadow:none}
+input[type="search"]{border-radius:9999px}
+.choice-card,.mode-card,.layout-card{background:#fff;border:1px solid var(--apple-hairline);border-radius:18px;box-shadow:none}
+.choice-card:hover,.mode-card:hover,.layout-card:hover{background:var(--apple-pearl);border-color:var(--apple-hairline);box-shadow:none}
+.choice-card strong{color:var(--apple-ink);font-weight:600;font-size:24px}
+.choice-card span:not(.choice-icon),.mode-card span{color:#333;font-size:17px;line-height:1.47}
+.choice-card b{color:var(--apple-blue);font-weight:600}
+.choice-icon{background:var(--apple-parchment);color:var(--apple-blue);border-radius:18px}
+.mode-card.selected,.layout-card.selected,.layout-all button.selected{border:2px solid var(--apple-focus);background:#fff}
+.layout-picture{background:var(--apple-parchment);border-color:var(--apple-hairline)}
+.layout-picture i,.text-only i{background:#d2d2d7}
+.layout-picture i:nth-child(2n){background:#b6b6bd}
+.note,#status,.layout-card small{color:var(--apple-muted);font-size:14px;font-weight:400}
+footer{background:rgba(245,245,247,.88);border-top:1px solid var(--apple-hairline);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:18px 48px}
+@media(max-width:700px){.shell{margin:0;min-height:100dvh}header{padding:26px 20px 22px}h1{font-size:34px}#editor{padding:28px 20px 38px}#steps{padding:20px 12px 24px}footer{padding:12px 14px calc(12px + env(safe-area-inset-bottom))}footer button{font-size:14px;padding:11px 15px}#status{font-size:11px}}
+@media(max-width:419px){h1{font-size:28px}.choice-card{padding:20px}.choice-card strong{font-size:21px}}
