@@ -1,7 +1,7 @@
-/* Administration-wide visual refresh based on apple.design(2).md.
+/* Administration-wide visual refresh based on apple.design(5).md.
    Presentation only: no change to authentication, routing, permissions or publication. */
-:root{--apple-blue:#0066cc;--apple-blue-focus:#0071e3;--apple-ink:#1d1d1f;--apple-muted:#6e6e73;--apple-bg:#f5f5f7;--apple-line:#e0e0e0;--apple-white:#fff}
-html:not(.appDark){--g:#1d1d1f;--g2:#0066cc;--bg:#f5f5f7;--card:#fff;--txt:#1d1d1f;--mut:#6e6e73;--line:#e0e0e0}
+:root{--apple-blue:#07583f;--apple-blue-focus:#0b7654;--apple-ink:#1d1d1f;--apple-muted:#6e6e73;--apple-bg:#f5f5f7;--apple-line:#e0e0e0;--apple-white:#fff}
+html:not(.appDark){--g:#063d2f;--g2:#07583f;--bg:#f5f5f7;--card:#fff;--txt:#1d1d1f;--mut:#6e6e73;--line:#e0e0e0}
 html:not(.appDark) body{background:var(--apple-bg);color:var(--apple-ink);font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-size:17px;line-height:1.47;-webkit-font-smoothing:antialiased}
 html:not(.appDark) h1,html:not(.appDark) h2,html:not(.appDark) h3,html:not(.appDark) .name{font-family:"SF Pro Display",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-weight:600;letter-spacing:-.025em;color:var(--apple-ink)}
 html:not(.appDark) .sm,html:not(.appDark) small,html:not(.appDark) .sub,html:not(.appDark) .hello{color:var(--apple-muted)}
@@ -13,7 +13,7 @@ html:not(.appDark) .dashTile,html:not(.appDark) .space{transition:background .15
 html:not(.appDark) .dashTile:hover,html:not(.appDark) .space:hover{background:#fafafc;border-color:#c6c6c9}
 html:not(.appDark) .dashTile:active,html:not(.appDark) .space:active{transform:scale(.985)}
 html:not(.appDark) .ico,html:not(.appDark) .dashIcon,html:not(.appDark) .draftI,html:not(.appDark) .avatar,html:not(.appDark) .avatar2{background:var(--apple-bg);color:var(--apple-blue);box-shadow:none}
-html:not(.appDark) .chip{background:#eaf3ff;color:var(--apple-blue);font-weight:600}
+html:not(.appDark) .chip{background:#e7f3eb;color:var(--apple-blue);font-weight:600}
 html:not(.appDark) .primary,html:not(.appDark) .connect,html:not(.appDark) .plus{background:var(--apple-blue);border-color:var(--apple-blue);color:#fff;box-shadow:none}
 html:not(.appDark) .primary,html:not(.appDark) .connect,html:not(.appDark) .miniBtn,html:not(.appDark) .forgot,html:not(.appDark) .previewAdmin{border-radius:9999px;font-weight:600}
 html:not(.appDark) .connect{background:var(--apple-blue);background-image:none}
@@ -36,7 +36,20 @@ html:not(.appDark) .brand{background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(
 html:not(.appDark) .brand h2{color:#fff}
 html:not(.appDark) .brand h3{color:#e7e7e7}
 html:not(.appDark) .brandLine{background:#fff}
-html:not(.appDark) .statusOk,html:not(.appDark) .pill.ok{background:#eaf3ff;color:var(--apple-blue)}
+html:not(.appDark) .statusOk,html:not(.appDark) .pill.ok{background:#e7f3eb;color:var(--apple-blue)}
 html:not(.appDark) .setRow,html:not(.appDark) .accessWrap{box-shadow:none}
 @media(max-width:700px){html:not(.appDark) .app{padding:20px 16px 110px}html:not(.appDark) .page{border-radius:16px}html:not(.appDark) .dashTile{border-radius:16px}}
 @media(prefers-reduced-motion:reduce){html:not(.appDark) button,html:not(.appDark) .dashTile,html:not(.appDark) .space{transition:none}}
+
+/* Association identity: Apple-inspired restraint, horticulture green rather than blue. */
+html:not(.appDark) .newAdminPanel{border-color:var(--apple-line);box-shadow:none;background:#fff;border-radius:18px}
+html:not(.appDark) .newAdminPanel h1{font-size:clamp(25px,3vw,36px);letter-spacing:-.035em}
+html:not(.appDark) .newAdminPanel h2{font-size:23px;letter-spacing:-.02em;margin-top:28px}
+html:not(.appDark) .newAdminPanel button:not(.trackingPerson):not(.trackingSecondary){background:#07583f;color:#fff}
+html:not(.appDark) .newAdminPanel button:focus-visible{outline:2px solid #0b7654;outline-offset:3px}
+html:not(.appDark) .newAdminPanel input,html:not(.appDark) .newAdminPanel select{border-color:#dbe4dd;background:#fff;color:#173126}
+html:not(.appDark) .trackingStats>div{border-radius:14px;background:#f5f7f5}
+html:not(.appDark) .trackingPerson{box-shadow:none;transition:border-color .15s,background .15s}
+html:not(.appDark) .trackingPerson:hover{border-color:#9fb9a8;background:#f8faf8}
+html:not(.appDark) .trackingSecondary{background:#eef5f0!important;color:#07583f!important}
+html:not(.appDark) .trackingDisclaimer{color:#64746a}
