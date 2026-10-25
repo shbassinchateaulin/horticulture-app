@@ -243,3 +243,10 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .layout-card .real-layout-photos img:first-child{max-height:70px}
 .layout-card .real-layout-photos.layout-variant-13 img:first-child,.layout-card .real-layout-photos.layout-variant-19 img:first-child,.layout-card .real-layout-photos.layout-variant-23 img:first-child{height:105px;max-height:105px}
 @media(max-width:700px){.real-layout-photos.layout-variant-10,.real-layout-photos.layout-variant-12,.real-layout-photos.layout-variant-22,.real-layout-photos.layout-variant-27{grid-template-columns:repeat(2,minmax(0,1fr))}.real-layout-photos.layout-variant-13 img:first-child,.real-layout-photos.layout-variant-19 img:first-child,.real-layout-photos.layout-variant-23 img:first-child{height:145px}}
+
+/* Suggestions en priorité, modèles secondaires repliés ; ergonomie mobile */
+.all-layouts{margin:16px 0;border-top:1px solid #dfe7e1;padding-top:14px}
+.all-layouts summary{cursor:pointer;font-weight:600;color:#245b40;padding:10px 0}
+.all-layouts .layout-grid{margin-top:12px}
+.layout-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+@media(max-width:650px){.layout-grid{grid-template-columns:1fr!important;gap:12px}.layout-card{width:100%;min-width:0}.layout-card .real-layout-preview{max-width:100%;box-sizing:border-box}.real-layout-selected{max-width:100%;box-sizing:border-box}}
