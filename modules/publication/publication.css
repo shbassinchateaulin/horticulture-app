@@ -250,3 +250,8 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .all-layouts .layout-grid{margin-top:12px}
 .layout-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
 @media(max-width:650px){.layout-grid{grid-template-columns:1fr!important;gap:12px}.layout-card{width:100%;min-width:0}.layout-card .real-layout-preview{max-width:100%;box-sizing:border-box}.real-layout-selected{max-width:100%;box-sizing:border-box}}
+
+/* Publication wizard: touch-friendly, continuous horizontal step rail */
+#steps{justify-content:flex-start;scroll-behavior:smooth;overscroll-behavior-x:contain;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+#steps .step-item{scroll-snap-align:center}
+@media(max-width:680px){#steps{gap:0;padding:18px 12px 22px;scrollbar-width:thin}#steps .step-item{flex:0 0 90px}#steps .step-line{flex:0 0 24px;min-width:24px;max-width:24px}#steps .step-circle{width:42px;height:42px;min-width:42px}#steps .step-label{font-size:11px;text-align:center}}
