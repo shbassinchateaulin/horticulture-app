@@ -15,10 +15,11 @@
  }
  function navigate(id,{replace=false}={}){
   if(!isView(id))return;
-  if(id===current)return;
+  if(id===current){display(id);return;}
   if(!restoring){const method=replace?'replaceState':'pushState';history[method]({...history.state,hortiAdminView:id},'',urlFor(id))}
   display(id);
  }
+ window.hortiNavigate=navigate;
  const originalGo=window.go;
  if(typeof originalGo==='function')window.go=function(id){navigate(id)};
  // Dynamic modules invoke their own goTo; observe class changes as a fallback.
