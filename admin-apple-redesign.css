@@ -53,3 +53,35 @@ html:not(.appDark) .trackingPerson{box-shadow:none;transition:border-color .15s,
 html:not(.appDark) .trackingPerson:hover{border-color:#9fb9a8;background:#f8faf8}
 html:not(.appDark) .trackingSecondary{background:#eef5f0!important;color:#07583f!important}
 html:not(.appDark) .trackingDisclaimer{color:#64746a}
+
+/* Unified icon language across every administration dashboard tile.
+   Fixes oversized SVGs and restores the same circular framing on all cards. */
+#home .dashGrid .dashTile .dashIcon,
+html:not(.appDark) #home .dashGrid .dashTile .dashIcon{
+ width:64px!important;height:64px!important;min-width:64px;min-height:64px;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ padding:15px!important;margin:0 auto 16px!important;
+ border-radius:50%!important;background:#eaf5ee!important;
+ border:1px solid #d4e8da!important;color:#07583f!important;
+ box-sizing:border-box!important;overflow:hidden!important;
+ font-size:0!important;line-height:1!important;
+}
+#home .dashGrid .dashTile .dashIcon svg,
+html:not(.appDark) #home .dashGrid .dashTile .dashIcon svg{
+ display:block!important;width:100%!important;height:100%!important;
+ max-width:34px!important;max-height:34px!important;
+ fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important;
+ flex:none!important;overflow:visible!important;
+}
+#home .dashGrid .dashTile .dashIcon svg *{vector-effect:non-scaling-stroke}
+#home .dashGrid .dashTile{min-width:0}
+#home .dashGrid .dashTile b{overflow-wrap:break-word}
+@media(max-width:760px){
+ #home .dashGrid .dashTile .dashIcon,
+ html:not(.appDark) #home .dashGrid .dashTile .dashIcon{
+  width:54px!important;height:54px!important;min-width:54px;min-height:54px;
+  padding:12px!important;margin-bottom:12px!important;
+ }
+ #home .dashGrid .dashTile .dashIcon svg{max-width:29px!important;max-height:29px!important}
+}
