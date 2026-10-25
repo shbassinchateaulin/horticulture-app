@@ -19,14 +19,6 @@
   if(!restoring){const method=replace?'replaceState':'pushState';history[method]({...history.state,hortiAdminView:id},'',urlFor(id))}
   display(id);
  }
- // Intercept navigation at capture phase so older modules cannot bypass history.
- document.addEventListener('click',e=>{
-  const target=e.target.closest?.('[data-go],.trackingHistoryBack');
-  if(!target||!root.closest('body'))return;
-  const id=target.dataset.go;
-  if(!isView(id))return;
-  e.preventDefault();e.stopImmediatePropagation();navigate(id);
- },true);
  const originalGo=window.go;
  if(typeof originalGo==='function')window.go=function(id){navigate(id)};
  // Dynamic modules invoke their own goTo; observe class changes as a fallback.
