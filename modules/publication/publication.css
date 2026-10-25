@@ -145,3 +145,56 @@ html,body{width:100%;min-width:0;overflow-x:hidden}
 .choice-visual .choice-card:focus-visible{outline:3px solid #0066cc;outline-offset:3px}
 @media(max-width:850px){.choice-visual{gap:14px}.choice-visual .choice-card{padding:14px;min-height:525px}.choice-visual .choice-photo{height:170px}.choice-visual .choice-icon{width:88px;height:88px;margin-top:-44px}.choice-visual .choice-icon svg{width:42px;height:42px}}
 @media(max-width:650px){.choice-visual{grid-template-columns:1fr;gap:18px}.choice-visual .choice-card{min-height:0;padding:16px 16px 20px}.choice-visual .choice-photo{height:190px}.choice-visual .choice-description{margin-bottom:22px}.choice-visual .choice-action{min-height:55px}}
+
+
+/* Compact desktop administration workflow — preserves mobile touch targets */
+@media(min-width:701px){
+ body{font-size:14px}
+ .shell{min-height:0}
+ header{padding:20px 30px 12px}
+ h1{font-size:27px;margin:5px 0}
+ h2,.intro h2{font-size:22px}
+ p,header p,.intro p{font-size:14px;line-height:1.4}
+ #steps{padding:12px 22px 14px;gap:2px}
+ #steps .step-item{gap:5px}
+ #steps .step-circle{width:30px;height:30px;min-width:30px;font-size:12px}
+ #steps .step-label{font-size:11px}
+ #editor{padding:20px 30px 26px;min-height:260px}
+ #editor .grid{gap:5px 20px}
+ label{font-size:12px;margin:10px 0 5px;gap:5px}
+ input,select{font-size:14px;padding:9px 12px;min-height:42px}
+ textarea{font-size:14px;padding:10px 12px;min-height:110px}
+ button{font-size:14px;padding:8px 15px}
+ .intro,.choice-intro{margin:0 0 14px}
+ .choice-intro h2{font-size:26px;margin:0 0 6px}
+ .choice-visual{gap:16px}
+ .choice-visual .choice-card{min-height:365px;padding:14px 16px 16px;border-radius:18px}
+ .choice-visual .choice-photo{height:145px;border-radius:12px}
+ .choice-visual .choice-icon{width:64px;height:64px;margin:-32px auto 6px;border-width:3px}
+ .choice-visual .choice-icon svg{width:30px;height:30px}
+ .choice-visual .choice-card strong{font-size:27px;margin:0 0 6px}
+ .choice-visual .choice-card .choice-lead{font-size:14px;margin-bottom:5px}
+ .choice-visual .choice-card .choice-description{font-size:13px;line-height:1.35;margin-bottom:10px}
+ .choice-visual .choice-action{min-height:42px;font-size:14px;border-radius:10px}
+ .mode-card{min-height:80px;padding:14px}
+ .layout-grid{gap:12px;margin:14px 0}
+ .layout-card{min-height:155px;padding:10px}
+ .layout-picture{height:85px}
+ footer{padding:12px 30px}
+ .note,#status{font-size:12px}
+}
+@media(max-width:700px){
+ #steps{padding:12px 10px 14px;gap:10px 3px}
+ #steps .step-circle{width:32px;height:32px;min-width:32px}
+ #editor{padding:18px 16px 24px}
+ .choice-intro h2{font-size:24px}
+ .choice-visual .choice-photo{height:140px}
+ .choice-visual .choice-icon{width:68px;height:68px;margin-top:-34px}
+ .choice-visual .choice-icon svg{width:32px;height:32px}
+ .choice-visual .choice-card strong{font-size:25px}
+ .choice-visual .choice-card .choice-lead{font-size:14px}
+ .choice-visual .choice-card .choice-description{font-size:13px}
+ .choice-visual .choice-action{min-height:46px;font-size:14px}
+ label{margin:12px 0 6px}
+ input,select{min-height:44px}
+}
