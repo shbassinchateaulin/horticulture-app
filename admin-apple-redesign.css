@@ -85,3 +85,7 @@ html:not(.appDark) #home .dashGrid .dashTile .dashIcon svg{
  }
  #home .dashGrid .dashTile .dashIcon svg{max-width:29px!important;max-height:29px!important}
 }
+
+/* Only these two icons are reduced; all other pictograms stay unchanged. */
+#home .dashGrid .dashTileSettings .dashIcon svg,#home .dashGrid .dashTileProfile .dashIcon svg{width:25px!important;height:25px!important;max-width:25px!important;max-height:25px!important}
+@media(max-width:760px){#home .dashGrid .dashTileSettings .dashIcon svg,#home .dashGrid .dashTileProfile .dashIcon svg{width:23px!important;height:23px!important;max-width:23px!important;max-height:23px!important}}
